@@ -122,7 +122,8 @@ export class TargetConditionsComponent implements OnInit {
         this.featureDetail.getFFVariationOptionWhenDisabled(),
         this.featureDetail.getFFDefaultRulePercentageRollouts(),
         this.featureDetail.getFftuwmtr(),
-        this.featureDetail.getUpperFeatures()
+        this.featureDetail.getUpperFeatures(),
+        this.featureDetail.getFeatureStatus()
         );
     })
   }
@@ -225,7 +226,8 @@ export class TargetConditionsComponent implements OnInit {
       this.featureDetail.getFFVariationOptionWhenDisabled(),
       this.featureDetail.getFFDefaultRulePercentageRollouts(),
       this.featureDetail.getFftuwmtr(),
-      this.featureDetail.getUpperFeatures()
+      this.featureDetail.getUpperFeatures(),
+      this.featureDetail.getFeatureStatus()
     );
 
     this.isApprovalRequestModal = false;
@@ -264,7 +266,8 @@ export class TargetConditionsComponent implements OnInit {
           featureDetail.getFFVariationOptionWhenDisabled(),
           featureDetail.getFFDefaultRulePercentageRollouts(),
           featureDetail.getFftuwmtr(),
-          featureDetail.getUpperFeatures()
+          featureDetail.getUpperFeatures(),
+          featureDetail.getFeatureStatus()
           );
         this.requestApprovalModalVisible = false;
     }, error => {
@@ -302,7 +305,8 @@ export class TargetConditionsComponent implements OnInit {
       this.featureDetail.getFFVariationOptionWhenDisabled(),
       this.featureDetail.getFFDefaultRulePercentageRollouts(),
       this.featureDetail.getFftuwmtr(),
-      this.featureDetail.getUpperFeatures()
+      this.featureDetail.getUpperFeatures(),
+      this.featureDetail.getFeatureStatus()
     );
     this.requestApprovalModalVisible = true;
     this.isApprovalRequestModal = true;
