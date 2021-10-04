@@ -11,7 +11,13 @@ namespace FeatureFlags.APIs.Models
     {
         public int EnvId { get; set; }
         public string EventName { get; set; }
-        public ExperimentFeatureFlag Flag { get; set; }
+
+        public string FlagId { get; set; }
+
+        public string BaselineVariation { get; set; }
+
+        public List<string> Variations { get; set; }
+
         public List<ExperimentIteration> Iterations { get; set; }
         public bool IsArvhived { get; set; }
 
@@ -58,12 +64,5 @@ namespace FeatureFlags.APIs.Models
         public string Variation { get; set; }
 
         public List<float> ConfidenceInterval { get; set; }
-    }
-
-    public class ExperimentFeatureFlag
-    {
-        public string Id { get; set; }
-        public string BaselineVariation { get; set; }
-        public List<string> Variations { get; set; }
     }
 }

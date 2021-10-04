@@ -17,7 +17,7 @@ namespace FeatureFlags.APIs.Services
     public interface IExperimentsService
     {
         Task ArchiveExperiment(string experimentId);
-        Task<ExperimentQueryViewModel> CreateExperiment(ExperimentQueryViewModel param);
+        Task<ExperimentViewModel> CreateExperiment(ExperimentViewModel param);
         Task<ExperimentIteration> StartIteration(int envId, string experimentId);
         Task<ExperimentIteration> StopIteration(int envId, string exptId, string iterationId);
 
@@ -80,9 +80,9 @@ namespace FeatureFlags.APIs.Services
                             StartExptTime = i.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EndExptTime = operationTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EventName = experiment.EventName,
-                            FlagId = experiment.Flag.Id,
-                            BaselineVariation = experiment.Flag.BaselineVariation,
-                            Variations = experiment.Flag.Variations
+                            FlagId = experiment.Id,
+                            BaselineVariation = experiment.BaselineVariation,
+                            Variations = experiment.Variations
                         };
 
                         _experimentStartEndMqService.SendMessage(message);
@@ -94,9 +94,9 @@ namespace FeatureFlags.APIs.Services
             }
         }
 
-        public async Task<ExperimentQueryViewModel> CreateExperiment(ExperimentQueryViewModel param)
+        public async Task<ExperimentViewModel> CreateExperiment(ExperimentViewModel param)
         {
-            var experiment = await _noSqlDbService.GetExperimentByFeatureFlagAndEvent(param.Flag.Id, param.EventName);
+            var experiment = await _noSqlDbService.GetExperimentByFeatureFlagAndEvent(param.FlagId, param.EventName);
 
             if (experiment == null)
             {
@@ -106,12 +106,9 @@ namespace FeatureFlags.APIs.Services
                     EnvId = param.EnvId,
                     EventName = param.EventName,
                     Iterations = new List<ExperimentIteration>(),
-                    Flag = new ExperimentFeatureFlag
-                    {
-                        Id = param.Flag.Id,
-                        BaselineVariation = param.Flag.BaselineVariation,
-                        Variations = param.Flag.Variations
-                    }
+                    FlagId = param.FlagId,
+                    BaselineVariation = param.BaselineVariation,
+                    Variations = param.Variations
                 };
 
                 experiment = await _noSqlDbService.CreateExperimentAsync(experiment);
@@ -158,9 +155,9 @@ namespace FeatureFlags.APIs.Services
                             EndExptTime = operationTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EventName = experiment.EventName,
 
-                            FlagId = experiment.Flag.Id,
-                            BaselineVariation = experiment.Flag.BaselineVariation,
-                            Variations = experiment.Flag.Variations
+                            FlagId = experiment.FlagId,
+                            BaselineVariation = experiment.BaselineVariation,
+                            Variations = experiment.Variations
                         };
 
                         _experimentStartEndMqService.SendMessage(message);
@@ -178,9 +175,9 @@ namespace FeatureFlags.APIs.Services
                     IterationId = iteration.Id,
                     StartExptTime = iteration.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EventName = experiment.EventName,
-                    FlagId = experiment.Flag.Id,
-                    BaselineVariation = experiment.Flag.BaselineVariation,
-                    Variations = experiment.Flag.Variations
+                    FlagId = experiment.FlagId,
+                    BaselineVariation = experiment.BaselineVariation,
+                    Variations = experiment.Variations
                 };
 
                 _experimentStartEndMqService.SendMessage(message);
@@ -211,9 +208,9 @@ namespace FeatureFlags.APIs.Services
                     StartExptTime = iteration.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EndExptTime = iteration.EndTime.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EventName = experiment.EventName,
-                    FlagId = experiment.Flag.Id,
-                    BaselineVariation = experiment.Flag.BaselineVariation,
-                    Variations = experiment.Flag.Variations
+                    FlagId = experiment.FlagId,
+                    BaselineVariation = experiment.BaselineVariation,
+                    Variations = experiment.Variations
                 };
 
                 _experimentStartEndMqService.SendMessage(message);
