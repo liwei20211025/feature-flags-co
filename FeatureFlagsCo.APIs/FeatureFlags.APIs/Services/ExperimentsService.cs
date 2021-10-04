@@ -25,6 +25,8 @@ namespace FeatureFlags.APIs.Services
             string searchText = "", int pageSize = 20);
 
         Task<List<ExperimentResultViewModel>> GetExperimentResult(ExperimentQueryViewModel param);
+
+        Task UpdateExperimentResultAsync(ExperimentResult param);
     }
 
     public class ExperimentsService : IExperimentsService
@@ -46,6 +48,18 @@ namespace FeatureFlags.APIs.Services
             _mySettings = mySettings;
         }
 
+        public async Task UpdateExperimentResultAsync(ExperimentResult param) 
+        {
+            var experiment = await _noSqlDbService.GetExperimentByIdAsync(param.ExperimentId);
+            if (experiment != null) 
+            {
+                var iteration = experiment.Iterations.Find(it => it.Id == param.IterationId);
+                iteration.UpdatedAt = param.EndTime;
+                iteration.Results = param.Results;
+
+                await _noSqlDbService.UpsertExperimentAsync(experiment);
+            }
+        }
 
         public async Task ArchiveExperiment(string experimentId)
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Threading;
+using FeatureFlags.APIs.Models;
 using FeatureFlags.APIs.ViewModels;
 using FeatureFlags.APIs.ViewModels.Experiments;
 using Microsoft.Extensions.Options;
@@ -19,14 +20,17 @@ namespace FeatureFlags.APIs.Services
     {
         private readonly ConnectionFactory _factory;
         private readonly IOptions<MySettings> _mySettings;
+        private readonly IExperimentsService _experimentService;
         private IConnection _connection;
         private IModel _channel;
 
-        public ExperimentResultService(IOptions<MySettings> mySettings)
+        public ExperimentResultService(IOptions<MySettings> mySettings, IExperimentsService experimentService)
         {
             _mySettings = mySettings;
             _factory = new ConnectionFactory();
             _factory.Uri = new Uri(_mySettings.Value.InsightsRabbitMqUrl);
+
+            _experimentService = experimentService;
         }
 
         public void Init()
@@ -79,8 +83,9 @@ namespace FeatureFlags.APIs.Services
                         {
                             var body = ea.Body.ToArray();
                             message = Encoding.UTF8.GetString(body);
-                            var messageModel = JsonConvert.DeserializeObject<ExperimentResultViewModel>(message);
-                            // Jiyun's Job
+                            var messageModel = JsonConvert.DeserializeObject<ExperimentResult>(message);
+                            await _experimentService.UpdateExperimentResultAsync(messageModel);
+
                             _channel.BasicAck(ea.DeliveryTag, false);
                         }
                         catch (AggregateException aexp)
