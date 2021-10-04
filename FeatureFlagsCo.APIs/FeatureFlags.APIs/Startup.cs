@@ -235,6 +235,7 @@ namespace FeatureFlags.AdminWebAPIs
             services.AddSingleton<IExperimentMqService, ExperimentstRabbitMqService>();
             services.AddSingleton<IInsighstMqService, InsighstRabbitMqService>();
             services.AddSingleton<IFeatureFlagMqService, FeatureFlagMqService>();
+            services.AddSingleton<IExperimentStartEndMqService, ExperimentStartEndMqService>();
             services.AddSingleton<IAuditLogMqService, AuditLogMqService>();
             
 

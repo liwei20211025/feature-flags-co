@@ -20,23 +20,29 @@ namespace FeatureFlags.APIs.Services
         Task<ExperimentQueryViewModel> CreateExperiment(ExperimentQueryViewModel param);
         Task<ExperimentIteration> StartIteration(int envId, string experimentId);
         Task<ExperimentIteration> StopIteration(int envId, string exptId, string iterationId);
-        Task<string> GetEnvironmentEvents(int envId, MetricTypeEnum metricType, string lastItem = "", string searchText = "", int pageSize = 20);
+
+        Task<string> GetEnvironmentEvents(int envId, MetricTypeEnum metricType, string lastItem = "",
+            string searchText = "", int pageSize = 20);
+
         Task<List<ExperimentResultViewModel>> GetExperimentResult(ExperimentQueryViewModel param);
     }
 
-    public class ExperimentsService: IExperimentsService
+    public class ExperimentsService : IExperimentsService
     {
         private readonly IOptions<MySettings> _mySettings;
         private readonly INoSqlService _noSqlDbService;
         private readonly IInsighstMqService _insightsService;
+        private readonly IExperimentStartEndMqService _experimentStartEndMqService;
 
         public ExperimentsService(
             INoSqlService noSqlDbService,
             IInsighstMqService insightsService,
+            IExperimentStartEndMqService experimentStartEndMqService,
             IOptions<MySettings> mySettings)
         {
             _noSqlDbService = noSqlDbService;
             _insightsService = insightsService;
+            _experimentStartEndMqService = experimentStartEndMqService;
             _mySettings = mySettings;
         }
 
@@ -48,8 +54,9 @@ namespace FeatureFlags.APIs.Services
             {
                 // If the experiment has active iteration
                 var operationTime = DateTime.UtcNow;
-                experiment.Iterations.ForEach(i => {
-                    if (!i.EndTime.HasValue) 
+                experiment.Iterations.ForEach(i =>
+                {
+                    if (!i.EndTime.HasValue)
                     {
                         var message = new ExperimentIterationMessageViewModel
                         {
@@ -59,22 +66,18 @@ namespace FeatureFlags.APIs.Services
                             StartExptTime = i.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EndExptTime = operationTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EventName = experiment.EventName,
-                            Flag = new ExperimentFeatureFlagViewModel
-                            {
-                                Id = experiment.Flag.Id,
-                                BaselineVariation = experiment.Flag.BaselineVariation,
-                                Variations = experiment.Flag.Variations
-                            }
+                            FlagId = experiment.Flag.Id,
+                            BaselineVariation = experiment.Flag.BaselineVariation,
+                            Variations = experiment.Flag.Variations
                         };
 
-                        // TODO send message to Q1
-                        // SUNDIAN
+                        _experimentStartEndMqService.SendMessage(message);
                     }
                 });
 
 
                 await _noSqlDbService.ArchiveExperimentAsync(experimentId, operationTime);
-            };
+            }
         }
 
         public async Task<ExperimentQueryViewModel> CreateExperiment(ExperimentQueryViewModel param)
@@ -98,7 +101,6 @@ namespace FeatureFlags.APIs.Services
                 };
 
                 experiment = await _noSqlDbService.CreateExperimentAsync(experiment);
-                
             }
 
             param.ExptId = experiment.Id;
@@ -123,12 +125,13 @@ namespace FeatureFlags.APIs.Services
                     Results = new List<IterationResult>()
                 };
 
-                if (experiment.Iterations == null) 
+                if (experiment.Iterations == null)
                 {
                     experiment.Iterations = new List<ExperimentIteration>();
                 }
 
-                experiment.Iterations.ForEach(i => {
+                experiment.Iterations.ForEach(i =>
+                {
                     if (!i.EndTime.HasValue)
                     {
                         i.EndTime = operationTime;
@@ -140,16 +143,13 @@ namespace FeatureFlags.APIs.Services
                             StartExptTime = i.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EndExptTime = operationTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                             EventName = experiment.EventName,
-                            Flag = new ExperimentFeatureFlagViewModel
-                            {
-                                Id = experiment.Flag.Id,
-                                BaselineVariation = experiment.Flag.BaselineVariation,
-                                Variations = experiment.Flag.Variations
-                            }
+
+                            FlagId = experiment.Flag.Id,
+                            BaselineVariation = experiment.Flag.BaselineVariation,
+                            Variations = experiment.Flag.Variations
                         };
 
-                        // TODO send message to Q1
-                        // SUNDIAN
+                        _experimentStartEndMqService.SendMessage(message);
                     }
                 });
 
@@ -164,19 +164,15 @@ namespace FeatureFlags.APIs.Services
                     IterationId = iteration.Id,
                     StartExptTime = iteration.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EventName = experiment.EventName,
-                    Flag = new ExperimentFeatureFlagViewModel 
-                    {
-                        Id = experiment.Flag.Id,
-                        BaselineVariation = experiment.Flag.BaselineVariation,
-                        Variations = experiment.Flag.Variations
-                    }
+                    FlagId = experiment.Flag.Id,
+                    BaselineVariation = experiment.Flag.BaselineVariation,
+                    Variations = experiment.Flag.Variations
                 };
 
-                // TODO send message to Q1
-                // SUNDIAN
+                _experimentStartEndMqService.SendMessage(message);
 
                 return iteration;
-            }      
+            }
 
             return null;
         }
@@ -201,16 +197,12 @@ namespace FeatureFlags.APIs.Services
                     StartExptTime = iteration.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EndExptTime = iteration.EndTime.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffff"),
                     EventName = experiment.EventName,
-                    Flag = new ExperimentFeatureFlagViewModel
-                    {
-                        Id = experiment.Flag.Id,
-                        BaselineVariation = experiment.Flag.BaselineVariation,
-                        Variations = experiment.Flag.Variations
-                    }
+                    FlagId = experiment.Flag.Id,
+                    BaselineVariation = experiment.Flag.BaselineVariation,
+                    Variations = experiment.Flag.Variations
                 };
 
-                // TODO send message to Q1
-                // SUNDIAN
+                _experimentStartEndMqService.SendMessage(message);
 
                 return iteration;
             }
@@ -234,6 +226,7 @@ namespace FeatureFlags.APIs.Services
                     var result = await res.Content.ReadAsStringAsync();
                     return JsonConvert.DeserializeObject<List<ExperimentResultViewModel>>(result);
                 }
+
                 return new List<ExperimentResultViewModel>();
             }
         }

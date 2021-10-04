@@ -13,6 +13,11 @@ namespace FeatureFlags.APIs.ViewModels.Experiments
         public string StartExptTime { get; set; }
         public string EndExptTime { get; set; }
         public string IterationId { get; set; }
-        public ExperimentFeatureFlagViewModel Flag { get; set; }
+
+        public string FlagId { get; set; }
+
+        public string BaselineVariation { get; set; }
+
+        public List<string> Variations { get; set; }
     }
 }
