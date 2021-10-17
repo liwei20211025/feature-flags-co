@@ -1,16 +1,16 @@
 import requests
 from datetime import datetime
 
-environmentSecret = 'ZDU0LWNlOTItNCUyMDIxMTAxMDIxMzY1MF9fMl9fMl9fM19fZGVmYXVsdF8zM2MwNA=='
-url_ffEvent = 'http://localhost:5000/Variation/GetMultiOptionVariation'
-url_customEvent = 'http://localhost:5000/ExperimentsDataReceiver/PushData'
+environmentSecret = 'NmFkLWMwODUtNCUyMDIxMTAxMjIzMDUxOV9fMThfXzI1X181MF9fZGVmYXVsdF9kYzVlMw=='
+url_ffEvent = 'https://ffc-api-ce2-dev.chinacloudsites.cn/Variation/GetMultiOptionVariation'
+url_customEvent = 'https://ffc-api-ce2-dev.chinacloudsites.cn/ExperimentsDataReceiver/PushData'
 
 # ffEvent
 for group in range(0, 3):
-    for user in range(20, 30):
+    for user in range(1, 10):
         ffUserName = "u_group"+str(group)+"_"+str(user)
         data = {
-            "featureFlagKeyName": "hahaha",
+            "featureFlagKeyName": "mytest",
             "environmentSecret": environmentSecret,
             "ffUserName": ffUserName,
             "ffUserEmail": ffUserName+"@testliang.com",
@@ -26,7 +26,7 @@ for group in range(0, 3):
 
 # User CustomEvent
 for group in range(0, 3):
-    for user in range(0, 20-4*group):
+    for user in range(1, 10 - group):
         ffUserName = "u_group"+str(group)+"_"+str(user)
         data = [
             {
