@@ -1,6 +1,7 @@
 
 from abc import ABC
 import abc
+from datetime import timedelta
 import json
 import logging
 import os
@@ -11,6 +12,15 @@ from azure.servicebus._common.constants import ServiceBusSubQueue
 
 from azure.servicebus.exceptions import MessageAlreadySettled, MessageLockLostError, MessageNotFoundError, MessageSizeExceededError, OperationTimeoutError, ServiceBusAuthenticationError, ServiceBusAuthorizationError, ServiceBusCommunicationError, ServiceBusConnectionError, ServiceBusError
 import redis
+import hmac
+import hashlib
+import base64
+try:
+    from urllib.parse import quote as url_parse_quote
+except ImportError:
+    from urllib import pathname2url as url_parse_quote
+
+from azure.core.credentials import AzureSasCredential
 
 TO_DO_NUM = '500'
 
@@ -25,14 +35,22 @@ uamqp_logger.setLevel(logging.ERROR)
 uamqp_connection_logger = logging.getLogger('uamqp.connection')
 uamqp_connection_logger.setLevel(logging.ERROR)
 
+FULLY_QUALIFIED_NAMESPACE = 'ffc-ce2-dev.servicebus.chinacloudapi.cn'
+SAS_POLICY = 'RootManageSharedAccessKey'
+SERVICEBUS_SAS_KEY = 'zd326D36R1rvT50CcFQ51wAu9+2vH0MlUA67rezo5G0='
+
 
 class AzureServiceBus:
     def __init__(self,
-                 conn_str,
+                 sb_host,
+                 sb_sas_policy,
+                 sb_sas_key,
                  redis_host='localhost',
                  redis_port=6379,
                  redis_passwd=''):
-        self._conn_str = conn_str
+        self._sb_host = sb_host
+        self._sb_sas_policy = sb_sas_policy
+        self._sb_sas_key = sb_sas_key
         self._redis_host = redis_host
         self._redis_port = redis_port
         self._redis_passwd = redis_passwd
@@ -49,6 +67,20 @@ class AzureServiceBus:
             port=port,
             password=password,
             ssl=ssl)
+
+    def _init_azure_service_bus(self, fully_qualified_namespace, sas_name, sas_value, token_ttl=timedelta(days=360)):
+        """Performs the signing and encoding needed to generate a sas token from a sas key."""
+        auth_uri = "sb://{}".format(fully_qualified_namespace)
+        sas = sas_value.encode('utf-8')
+        expiry = str(int(time.time() + token_ttl.total_seconds()))
+        string_to_sign = (auth_uri + '\n' + expiry).encode('utf-8')
+        signed_hmac_sha256 = hmac.HMAC(sas, string_to_sign, hashlib.sha256)
+        signature = url_parse_quote(
+            base64.b64encode(signed_hmac_sha256.digest()))
+        sas_token = 'SharedAccessSignature sr={}&sig={}&se={}&skn={}'.format(
+            auth_uri, signature, expiry, sas_name)
+        credential = AzureSasCredential(sas_token)
+        return ServiceBusClient(fully_qualified_namespace, credential, logging_enable=True)
 
     @property
     def redis(self) -> redis.Redis:
@@ -105,8 +137,8 @@ class AzureSender(AzureServiceBus):
             if last_error:
                 raise last_error
         if not bus:
-            bus = ServiceBusClient.from_connection_string(
-                conn_str=self._conn_str, logging_enable=True)
+            bus = self._init_azure_service_bus(
+                self._sb_host, self._sb_sas_policy, self._sb_sas_key)
             with bus:
                 sender = bus.get_topic_sender(topic_name=topic)
                 with sender:
@@ -212,8 +244,8 @@ class AzureReceiver(ABC, AzureSender):
                         'service errors and interruptions occasionally occur during receiving, trying to fetch next message...')
                     continue
 
-        self._bus = ServiceBusClient.from_connection_string(
-            conn_str=self._conn_str, logging_enable=True)
+        self._bus = self._init_azure_service_bus(
+            self._sb_host, self._sb_sas_policy, self._sb_sas_key)
         for _ in range(connection_retries):  # Connection retries.
             try:
                 logger.info('################opening...################')

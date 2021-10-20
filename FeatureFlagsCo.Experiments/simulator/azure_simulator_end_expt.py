@@ -5,20 +5,20 @@ import logging
 
 logger = logging.getLogger('azure_simulator_end_expt')
 logger.setLevel(logging.INFO)
+CONN_STR = 'Endpoint=sb://ffc-ce2-dev.servicebus.chinacloudapi.cn/;SharedAccessKeyName=normal_send_receive;SharedAccessKey=aZep2SIj/kfLSy83lTkDodgwu7mlXvqYdk2weVvjXzk='
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.ERROR,
                         format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                         datefmt='%m-%d %H:%M')
-    conn_str = get_config_value('azure', 'conn_str')
     redis_host = get_config_value('redis', 'redis_host')
     redis_port = get_config_value('redis', 'redis_port')
     redis_passwd = get_config_value('redis', 'redis_passwd')
     topic_1 = get_config_value('p1', 'topic_Q1')
     origin_1 = get_config_value('p1', 'subscription_Q1')
     bus = ServiceBusClient.from_connection_string(
-        conn_str=conn_str, logging_enable=True)
+        conn_str=CONN_STR, logging_enable=True)
     with bus:
         # Expt1
         #  Q1 end

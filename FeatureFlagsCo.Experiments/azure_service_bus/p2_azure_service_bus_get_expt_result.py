@@ -16,12 +16,15 @@ logger.setLevel(logging.INFO)
 
 class P2AzureGetExptResultReceiver(AzureReceiver):
     def __init__(self,
-                 conn_str,
+                 sb_host,
+                 sb_sas_policy,
+                 sb_sas_key,
                  redis_host='localhost',
                  redis_port='6379',
                  redis_passwd=None,
                  wait_timeout=30.0):
-        super().__init__(conn_str, redis_host, redis_port, redis_passwd)
+        super().__init__(sb_host, sb_sas_policy, sb_sas_key,
+                         redis_host, redis_port, redis_passwd)
         self._last_expt_id = ''
         self._wait_timeout = wait_timeout
 
