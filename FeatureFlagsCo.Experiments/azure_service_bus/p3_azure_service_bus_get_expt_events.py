@@ -1,9 +1,14 @@
 import logging
 
+from config.config_handling import get_config_value
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+
 from azure_service_bus.send_consume import AzureReceiver
 
-logger = logging.getLogger('p3_azure_service_bus_get_expt_events')
-logger.setLevel(logging.INFO)
+p3_logger = logging.getLogger('p3_azure_service_bus_get_expt_events')
+p3_logger.addHandler(AzureLogHandler(
+    connection_string=get_config_value('azure', 'insignt_conn_str')))
+p3_logger.setLevel(logging.INFO)
 
 
 class P3AzureGetExptFFEventsReceiver(AzureReceiver):
@@ -23,7 +28,7 @@ class P3AzureGetExptFFEventsReceiver(AzureReceiver):
                 }
                 list_ff_events = list_ff_events + [dict_to_add]
                 self.redis_set(id, list_ff_events)
-                logger.info('Added ff event: %r' % dict_to_add)
+                p3_logger.info('Added ff event: %r' % dict_to_add)
 
 
 class P3AzureGetExptUserEventsReceiver(AzureReceiver):
@@ -42,4 +47,4 @@ class P3AzureGetExptUserEventsReceiver(AzureReceiver):
                 }
                 list_user_events = list_user_events + [dict_to_add]
                 self.redis_set(id, list_user_events)
-                logger.info('Added user event: %r' % dict_to_add)
+                p3_logger.info('Added user event: %r' % dict_to_add)

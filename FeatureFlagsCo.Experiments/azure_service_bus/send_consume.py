@@ -1,20 +1,28 @@
 
-from abc import ABC
 import abc
-from datetime import timedelta
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import os
 import sys
 import time
-from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusSender, ServiceBusReceiver
-from azure.servicebus._common.constants import ServiceBusSubQueue
+from abc import ABC
+from datetime import timedelta
 
-from azure.servicebus.exceptions import MessageAlreadySettled, MessageLockLostError, MessageNotFoundError, MessageSizeExceededError, OperationTimeoutError, ServiceBusAuthenticationError, ServiceBusAuthorizationError, ServiceBusCommunicationError, ServiceBusConnectionError, ServiceBusError
 import redis
-import hmac
-import hashlib
-import base64
+from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
+                              ServiceBusReceiver, ServiceBusSender)
+from azure.servicebus._common.constants import ServiceBusSubQueue
+from azure.servicebus.exceptions import (MessageAlreadySettled,
+                                         MessageLockLostError,
+                                         MessageNotFoundError,
+                                         MessageSizeExceededError,
+                                         ServiceBusError)
+from config.config_handling import get_config_value
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+
 try:
     from urllib.parse import quote as url_parse_quote
 except ImportError:
@@ -25,6 +33,8 @@ from azure.core.credentials import AzureSasCredential
 TO_DO_NUM = '500'
 
 logger = logging.getLogger('send_consume')
+logger.addHandler(AzureLogHandler(
+    connection_string=get_config_value('azure', 'insignt_conn_str')))
 logger.setLevel(logging.INFO)
 
 # The logging levels below may need to be changed based on the logging that you want to suppress.
@@ -34,10 +44,6 @@ uamqp_logger.setLevel(logging.ERROR)
 # or even further fine-grained control, suppressing the warnings in uamqp.connection module
 uamqp_connection_logger = logging.getLogger('uamqp.connection')
 uamqp_connection_logger.setLevel(logging.ERROR)
-
-FULLY_QUALIFIED_NAMESPACE = 'ffc-ce2-dev.servicebus.chinacloudapi.cn'
-SAS_POLICY = 'RootManageSharedAccessKey'
-SERVICEBUS_SAS_KEY = 'zd326D36R1rvT50CcFQ51wAu9+2vH0MlUA67rezo5G0='
 
 
 class AzureServiceBus:

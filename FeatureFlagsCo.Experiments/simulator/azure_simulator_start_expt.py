@@ -44,6 +44,7 @@ if __name__ == '__main__':
         }
         AzureSender(None, redis_host, redis_port, redis_passwd).send(
             bus, topic_1, origin_1, Q1_START)
+        logger.info('send to Q1 expt start')
         for group in range(1, 4):
             events = []
             for user in range(1000):
@@ -55,8 +56,8 @@ if __name__ == '__main__':
                     "AccountId": "38",
                     "ProjectId": "48",
                     "FeatureFlagKeyName": "PayButton",
-                    "UserKeyId": "u_group"+str(group)+"_"+str(user)+"@testliang.com",
-                    "FFUserName": "u_group"+str(group)+"_"+str(user),
+                    "UserKeyId": "u_group" + str(group) + "_" + str(user) + "@testliang.com",
+                    "FFUserName": "u_group" + str(group) + "_" + str(user),
                     "VariationLocalId": str(group),
                     "VariationValue": "Small-Button",
                     "TimeStamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f"),
@@ -68,19 +69,19 @@ if __name__ == '__main__':
 
         for group in range(1, 4):
             events = []
-            for user in range(1000 - 200*group):
+            for user in range(1000 - 200 * group):
                 Q5 = {
                     "Route": "index",
                     "Secret": "YjA1LTNiZDUtNCUyMDIxMDkwNDIyMTMxNV9fMzhfXzQ4X18xMDNfX2RlZmF1bHRfNzc1Yjg=",
-                    "TimeStamp":  datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                    "TimeStamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f"),
                     "Type": "CustomEvent",
                     "EventName": "ButtonPayTrack",
                     "NumericValue": 1,
                     "User": {
-                            "FFUserName": "u_group"+str(group)+"_"+str(user),
-                            "FFUserEmail": "u_group"+str(group)+"_"+str(user)+"@testliang.com",
+                            "FFUserName": "u_group" + str(group) + "_" + str(user),
+                            "FFUserEmail": "u_group" + str(group) + "_" + str(user) + "@testliang.com",
                             "FFUserCountry": "China",
-                            "FFUserKeyId": "u_group"+str(group)+"_"+str(user)+"@testliang.com",
+                            "FFUserKeyId": "u_group" + str(group) + "_" + str(user) + "@testliang.com",
                             "FFUserCustomizedProperties": [
                                 {
                                     "Name": "age",

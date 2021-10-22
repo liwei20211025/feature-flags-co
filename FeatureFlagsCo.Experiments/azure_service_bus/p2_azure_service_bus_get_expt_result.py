@@ -1,4 +1,6 @@
 from time import sleep
+
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from config.config_handling import get_config_value
 import logging
 import numpy as np
@@ -10,8 +12,10 @@ import pandas as pd
 
 from azure_service_bus.send_consume import AzureReceiver
 
-logger = logging.getLogger('p2_azure_service_bus_get_expt_result')
-logger.setLevel(logging.INFO)
+p2_logger = logging.getLogger('p2_azure_service_bus_get_expt_result')
+p2_logger.addHandler(AzureLogHandler(
+    connection_string=get_config_value('azure', 'insignt_conn_str')))
+p2_logger.setLevel(logging.INFO)
 
 
 class P2AzureGetExptResultReceiver(AzureReceiver):
@@ -33,10 +37,10 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
         a = 1.0 * np.array(data)
         n = len(a)
         m, se = np.mean(a), sp.stats.sem(a)
-        h = se * sp.stats.t.ppf((1 + confidence) / 2., n-1)
-        return m, m-h, m+h
+        h = se * sp.stats.t.ppf((1 + confidence) / 2., n - 1)
+        return m, m - h, m + h
 
-     # cal Expt Result from list of FlagsEvents and list of CustomEvents:
+    # cal Expt Result from list of FlagsEvents and list of CustomEvents:
     def __calc_experiment_result(self, expt, expt_id, list_ff_events, list_user_events):
         # User's flags event aggregation, if not empty
         if list_ff_events:
@@ -71,8 +75,8 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             else:
                 dict_var_occurence[value] = dict_var_occurence[value] + 1
                 dict_var_user[value] = dict_var_user[value] + [user]
-        logger.info('dictionary of flag var:occurence')
-        logger.info(dict_var_occurence)
+        p2_logger.info('dictionary of flag var:occurence')
+        p2_logger.info(dict_var_occurence)
 
         # dictionary {
         #              'Var1' : list_of_unique_user,
@@ -97,8 +101,8 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                     else:
                         dict_expt_occurence[it] = 1 + \
                             dict_expt_occurence[it]
-        logger.info('dictionary of expt var:occurence')
-        logger.info(dict_expt_occurence)
+        p2_logger.info('dictionary of expt var:occurence')
+        p2_logger.info(dict_expt_occurence)
 
         # list of results by flag-variation
         output = []
@@ -122,7 +126,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             for item in dict_var_occurence.keys():
                 if item in dict_expt_occurence.keys():
                     dist_item = [1 for i in range(dict_expt_occurence[item])] + [
-                        0 for i in range(dict_var_occurence[item]-dict_expt_occurence[item])]
+                        0 for i in range(dict_var_occurence[item] - dict_expt_occurence[item])]
                     rate, min, max = self.__mean_confidence_interval(
                         dist_item)
                     if math.isnan(min) or math.isnan(max):
@@ -134,7 +138,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                     output.append({'variation': item,
                                    'conversion': dict_expt_occurence[item],
                                    'uniqueUsers': dict_var_occurence[item],
-                                   'conversionRate':   round(rate, 3),
+                                   'conversionRate': round(rate, 3),
                                    'changeToBaseline': -1,
                                    'confidenceInterval': confidenceInterval,
                                    'pValue': -1,
@@ -146,7 +150,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                     output.append({'variation': item,
                                    'conversion': 0,
                                    'uniqueUsers': dict_var_occurence[item],
-                                   'conversionRate':   0,
+                                   'conversionRate': 0,
                                    'changeToBaseline': -1,
                                    'confidenceInterval': [-1, -1],
                                    'pValue': -1,
@@ -160,12 +164,12 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 dict_var_occurence[var_baseline]
             # Preprare Baseline data sample distribution for Pvalue Calculation
             dist_baseline = [1 for i in range(dict_expt_occurence[var_baseline])] + [
-                0 for i in range(dict_var_occurence[var_baseline] -
-                                 dict_expt_occurence[var_baseline])]
+                0 for i in range(dict_var_occurence[var_baseline]
+                                 - dict_expt_occurence[var_baseline])]
             for item in dict_var_occurence.keys():
                 if item in dict_expt_occurence.keys():
                     dist_item = [1 for i in range(dict_expt_occurence[item])] + [
-                        0 for i in range(dict_var_occurence[item]-dict_expt_occurence[item])]
+                        0 for i in range(dict_var_occurence[item] - dict_expt_occurence[item])]
                     rate, min, max = self.__mean_confidence_interval(
                         dist_item)
                     if math.isnan(min) or math.isnan(max):
@@ -174,11 +178,11 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                         confidenceInterval = [0 if round(min, 2) < 0 else round(
                             min, 2), 1 if round(max, 2) > 1 else round(max, 2)]
                     pValue = round(
-                        1-stats.ttest_ind(dist_baseline, dist_item).pvalue, 2)
+                        1 - stats.ttest_ind(dist_baseline, dist_item).pvalue, 2)
                     output.append({'variation': item,
                                    'conversion': dict_expt_occurence[item],
                                    'uniqueUsers': dict_var_occurence[item],
-                                   'conversionRate':   round(rate, 3),
+                                   'conversionRate': round(rate, 3),
                                    'changeToBaseline': round(rate, 3) - round(BaselineRate, 3),
                                    'confidenceInterval': confidenceInterval,
                                    'pValue': -1 if math.isnan(pValue) else pValue,
@@ -191,7 +195,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                     output.append({'variation': item,
                                    'conversion': 0,
                                    'uniqueUsers': dict_var_occurence[item],
-                                   'conversionRate':   0,
+                                   'conversionRate': 0,
                                    'changeToBaseline': -1,
                                    'confidenceInterval': [-1, -1],
                                    'pValue': -1,
@@ -201,7 +205,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                                    })
             # Get winner variation
             listValid = [output.index(
-                item) for item in output if item['isInvalid'] == False]
+                item) for item in output if not item['isInvalid']]
             # If at least one variation is valid:
             if len(listValid) != 0:
                 dictValid = {}
@@ -212,8 +216,8 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 # when baseline has the highest conversion rate
                 if output[maxRateIndex]['changeToBaseline'] > 0:
                     output[maxRateIndex]['isWinner'] = True
-        logger.info('ExptResults:')
-        logger.info(output)
+        p2_logger.info('ExptResults:')
+        p2_logger.info(output)
         # result to send to rabbitmq
         output_to_mq = {
             'ExperimentId': expt_id,
@@ -280,9 +284,9 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             topic = get_config_value('p2', 'topic_Q2')
             subscription = get_config_value('p2', 'subscription_Q2')
             self.send(self._bus, topic, subscription, expt_id)
-            logger.info(
+            p2_logger.info(
                 'a delay to acept events after deadline of %r' % expt_id)
-            logger.info('#########send back to Q2 %r#########' % expt_id)
+            p2_logger.info('#########send back to Q2 %r#########' % expt_id)
         # last event received within N minutes, no potential recepton delay, proceed data deletion
         else:
             # del expt
@@ -305,7 +309,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 self.redis_set(id, dict_customEvent_acitveExpts)
             # ACTION: Delete in Redis > list_FFevent related to FlagID
             # ACTION: Delete in Redis > list_Exptevent related to EventName
-            logger.info('Update info and delete stopped Experiment data')
+            p2_logger.info('Update info and delete stopped Experiment data')
             if dict_flag_acitveExpts and not dict_flag_acitveExpts.get(expt['FlagId'], None):
                 id = '%s_%s' % (expt['EnvId'], expt['FlagId'])
                 self.redis_del(id)
@@ -322,7 +326,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 if expt_last_exec_time:
                     dict_from_redis.pop(expt_id, None)
                     self.redis_set('dict_expt_last_exec_time', dict_from_redis)
-            logger.info('######### p2 %r finished #########' % expt_id)
+            p2_logger.info('######### p2 %r finished #########' % expt_id)
 
     def handle_body(self, topic, body):
         starttime = datetime.now()
@@ -347,12 +351,12 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             "%Y-%m-%dT%H:%M:%S.%f")
         self.redis_set('dict_expt_last_exec_time', dict_expt_last_exec_time)
         self._last_expt_id = expt_id
-        logger.info("########p2 gets %r#########" % value)
+        p2_logger.info("########p2 gets %r#########" % value)
         # If experiment info exist
         if value:
             # Parse experiment info
-            expt, ExptStartTime, ExptEndTime, _, _, _, list_ff_events, list_user_events = self.__parse_event_from_redis(
-                value, fmt)
+            expt, ExptStartTime, ExptEndTime, _, _, _, list_ff_events, list_user_events = \
+                self.__parse_event_from_redis(value, fmt)
 
             # Start To Calculate Experiment Result
             # call function to calculate experiment result
@@ -362,7 +366,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             topic = get_config_value('p2', 'topic_Q3')
             subscription = get_config_value('p2', 'subscription_Q3')
             self.send(self._bus, topic, subscription, output_to_mq)
-            logger.info('########p2 sends %r result to Q3#########' % expt_id)
+            p2_logger.info('########p2 sends %r result to Q3#########' % expt_id)
 
             # experiment not finished
             if not expt['EndExptTime']:
@@ -370,7 +374,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 topic = get_config_value('p2', 'topic_Q2')
                 subscription = get_config_value('p2', 'subscription_Q2')
                 self.send(self._bus, topic, subscription, expt_id)
-                logger.info(
+                p2_logger.info(
                     '#########p2 sends %r back to Q2########' % expt_id)
             # experiment finished
             else:
@@ -379,5 +383,5 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                                                  fmt, ExptStartTime, ExptEndTime, expt_id, expt)
             endtime = datetime.now()
             delta = endtime - starttime
-            logger.info('######### p2 processing time in seconds: %r #########' %
-                        delta.total_seconds())
+            p2_logger.info('######### p2 processing time in seconds: %r #########' %
+                           delta.total_seconds())
