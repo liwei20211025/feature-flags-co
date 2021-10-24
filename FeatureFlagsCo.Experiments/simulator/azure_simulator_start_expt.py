@@ -7,9 +7,6 @@ import logging
 logger = logging.getLogger('azure_simulator_start_expt')
 logger.setLevel(logging.INFO)
 
-CONN_STR = 'Endpoint=sb://ffc-ce2-dev.servicebus.chinacloudapi.cn/;SharedAccessKeyName=normal_send_receive;SharedAccessKey=aZep2SIj/kfLSy83lTkDodgwu7mlXvqYdk2weVvjXzk='
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.ERROR,
                         format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -23,9 +20,9 @@ if __name__ == '__main__':
     origin_4 = get_config_value('p3', 'subscription_Q4')
     topic_5 = get_config_value('p3', 'topic_Q5')
     origin_5 = get_config_value('p3', 'subscription_Q5')
+    sb_conn_str = get_config_value('azure', 'sb_conn_str')
 
-    bus = ServiceBusClient.from_connection_string(
-        conn_str=CONN_STR, logging_enable=True)
+    bus = ServiceBusClient.from_connection_string(conn_str=sb_conn_str, logging_enable=True)
     with bus:
         # Expt1
         # Q1 start
@@ -39,6 +36,8 @@ if __name__ == '__main__':
             "EventName": "ButtonPayTrack",
             'EventType': 1,
             'CustomEventTrackOption': 1,
+            'CustomEventSuccessCriteria': 1,
+            'CustomEventUnit': None,
             "StartExptTime": "2021-09-20T21:00:00.123456",
             "EndExptTime": ""
         }
@@ -64,8 +63,7 @@ if __name__ == '__main__':
                     "phoneNumber": "135987652543"
                 }
                 events.append(Q4)
-            AzureSender(None, redis_host, redis_port, redis_passwd).send(
-                bus, topic_4, origin_4, *events)
+            AzureSender(None, redis_host, redis_port, redis_passwd).send(bus, topic_4, origin_4, *events)
 
         for group in range(1, 4):
             events = []
@@ -101,5 +99,4 @@ if __name__ == '__main__':
                     "AccountId": "38"
                 }
                 events.append(Q5)
-            AzureSender(None, redis_host, redis_port, redis_passwd).send(
-                bus, topic_5, origin_5, *events)
+            AzureSender(None, redis_host, redis_port, redis_passwd).send(bus, topic_5, origin_5, *events)

@@ -5,8 +5,6 @@ import logging
 
 logger = logging.getLogger('azure_simulator_end_expt')
 logger.setLevel(logging.INFO)
-CONN_STR = 'Endpoint=sb://ffc-ce2-dev.servicebus.chinacloudapi.cn/;SharedAccessKeyName=normal_send_receive;SharedAccessKey=aZep2SIj/kfLSy83lTkDodgwu7mlXvqYdk2weVvjXzk='
-
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.ERROR,
@@ -17,8 +15,9 @@ if __name__ == '__main__':
     redis_passwd = get_config_value('redis', 'redis_passwd')
     topic_1 = get_config_value('p1', 'topic_Q1')
     origin_1 = get_config_value('p1', 'subscription_Q1')
-    bus = ServiceBusClient.from_connection_string(
-        conn_str=CONN_STR, logging_enable=True)
+    sb_conn_str = get_config_value('azure', 'sb_conn_str')
+
+    bus = ServiceBusClient.from_connection_string(conn_str=sb_conn_str, logging_enable=True)
     with bus:
         # Expt1
         #  Q1 end
@@ -32,6 +31,8 @@ if __name__ == '__main__':
             "EventName": "ButtonPayTrack",
             'EventType': 1,
             'CustomEventTrackOption': 1,
+            'CustomEventSuccessCriteria': 1,
+            'CustomEventUnit': None,
             "StartExptTime": "2021-09-20T21:00:00.123456",
             "EndExptTime": "2021-10-15T19:00:00.123456"
         }

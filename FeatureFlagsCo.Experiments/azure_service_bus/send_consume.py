@@ -20,8 +20,9 @@ from azure.servicebus.exceptions import (MessageAlreadySettled,
                                          MessageNotFoundError,
                                          MessageSizeExceededError,
                                          ServiceBusError)
-from config.config_handling import get_config_value
-from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+from azure_service_bus.insight_utils import (get_custom_properties,
+                                             get_insight_logger)
 
 try:
     from urllib.parse import quote as url_parse_quote
@@ -30,12 +31,11 @@ except ImportError:
 
 from azure.core.credentials import AzureSasCredential
 
-TO_DO_NUM = '500'
-
-logger = logging.getLogger('send_consume')
-logger.addHandler(AzureLogHandler(
-    connection_string=get_config_value('azure', 'insignt_conn_str')))
+logger = get_insight_logger('trace_send_consume')
 logger.setLevel(logging.INFO)
+
+debug_logger = logging.getLogger('debug_send_consume')
+debug_logger.setLevel(logging.INFO)
 
 # The logging levels below may need to be changed based on the logging that you want to suppress.
 uamqp_logger = logging.getLogger('uamqp')
@@ -111,8 +111,7 @@ class AzureSender(AzureServiceBus):
             batch_message = sender.create_message_batch()
             for msg in msgs:
                 try:
-                    message = ServiceBusMessage(json.dumps(
-                        msg), subject=topic, application_properties={'origin': origin})
+                    message = ServiceBusMessage(json.dumps(msg), subject=topic, application_properties={'origin': origin})
                 except TypeError:
                     # Message body is of an inappropriate type, must be string, bytes or None.
                     continue
@@ -132,8 +131,7 @@ class AzureSender(AzureServiceBus):
                 except MessageSizeExceededError:
                     # The body provided in the message to be sent is too large.
                     # This must be handled at the application layer, by breaking up or condensing.
-                    logger.exception(
-                        "The body provided in the message to be sent is too large")
+                    logger.exception("The body provided in the message to be sent is too large")
                     break
                 except ServiceBusError as e:
                     # Other types of service bus errors that can be handled at the higher level, such as connection/auth errors
@@ -153,8 +151,7 @@ class AzureSender(AzureServiceBus):
             sender = bus.get_topic_sender(topic_name=topic)
             with sender:
                 send_batch_messages(sender, topic, origin, *messages)
-        logger.info(
-            f'send to topic: {topic}, origin: {origin}, num of message: {len(messages)}')
+        debug_logger.info(f'send to topic: {topic}, origin: {origin}, num of message: {len(messages)}')
 
 
 class AzureReceiver(ABC, AzureSender):
@@ -167,9 +164,9 @@ class AzureReceiver(ABC, AzureSender):
 
         def receive_message(receiver: ServiceBusReceiver, settlement_retries=3, is_dlq=False):
             if is_dlq:
-                logger.info("#######dlq receiver#######")
+                debug_logger.info("################dlq receiver################")
             else:
-                logger.info("#######normal receiver#######")
+                debug_logger.info("################normal receiver################")
             should_retry = True
             while should_retry:
                 try:
@@ -181,8 +178,7 @@ class AzureReceiver(ABC, AzureSender):
                             self.handle_body(msg.subject, json.loads(str(msg)))
                             should_complete = True
                         except ServiceBusError:
-                            logger.exception(
-                                "Maybe error in send message, retrying to connect...")
+                            logger.exception("Maybe error in send message, retrying to connect...")
                             raise
                         except redis.RedisError as e:
                             logger.exception('redis error')
@@ -214,27 +210,22 @@ class AzureReceiver(ABC, AzureSender):
                                         id = f'{msg.subject}_py_deferred_sequenced_numbers'
                                         if not (deferred_sequenced_numbers := self.redis_get(id)):
                                             deferred_sequenced_numbers = []
-                                        deferred_sequenced_numbers.append(
-                                            msg.sequence_number)
-                                        self.redis_set(
-                                            id, deferred_sequenced_numbers)
+                                        deferred_sequenced_numbers.append(msg.sequence_number)
+                                        self.redis_set(id, deferred_sequenced_numbers)
                                         receiver.defer_message(msg)
                                     else:
-                                        receiver.dead_letter_message(
-                                            msg, reason=TO_DO_NUM, error_description='Application level failure')
+                                        receiver.dead_letter_message(msg, reason=str(last_error), error_description='Application level failure')
 
                                 break
                             except (MessageAlreadySettled, MessageLockLostError, MessageNotFoundError):
                                 # Message was already settled, either somewhere earlier in this processing or by another node.  Continue.
                                 # Message lock was lost before settlement.  Handle as necessary in the app layer for idempotency then continue on.
                                 # Message has an improper sequence number, was dead lettered, or otherwise does not exist.  Handle at app layer, continue on.
-                                logger.exception(
-                                    'message settled or lost or not found')
+                                logger.exception('message settled or lost or not found')
                                 break
                             except ServiceBusError:
                                 # Any other undefined service errors during settlement.  Can be transient, and can retry, but should be logged, and alerted on high volume.
-                                logger.exception(
-                                    'undefined service errors during settlement, retrying...')
+                                logger.exception('undefined service errors during settlement, retrying...')
                                 continue
                     return
                 except ServiceBusError:
@@ -246,15 +237,14 @@ class AzureReceiver(ABC, AzureSender):
                     # Logging the associated failure and alerting on high volume is often prudent.
                     if isinstance(e, KeyboardInterrupt):
                         raise
-                    logger.exception(
-                        'service errors and interruptions occasionally occur during receiving, trying to fetch next message...')
+                    logger.exception('service errors and interruptions occasionally occur during receiving, trying to fetch next message...')
                     continue
 
         self._bus = self._init_azure_service_bus(
             self._sb_host, self._sb_sas_policy, self._sb_sas_key)
         for _ in range(connection_retries):  # Connection retries.
             try:
-                logger.info('################opening...################')
+                debug_logger.info('################opening...################')
                 with self._bus:
                     if topic:
                         topic_name, subscription = topic
@@ -266,26 +256,24 @@ class AzureReceiver(ABC, AzureSender):
                         except SystemExit:
                             os._exit(0)
                     with receiver:
-                        logger.info(
-                            f'########topic: {topic_name}, subscription: {subscription}########')
-                        receive_message(
-                            receiver, settlement_retries=settlement_retries, is_dlq=is_dlq)
+                        logger.info('RECEIVER START', extra=get_custom_properties(topic=topic_name, subscription=subscription))
+                        receive_message(receiver, settlement_retries=settlement_retries, is_dlq=is_dlq)
             except ServiceBusError:
-                logger.exception(
-                    'An error occurred in service bus level, retrying to connect...')
+                logger.exception('An error occurred in service bus level, retrying to connect...')
                 time.sleep(10)
                 continue
             except KeyboardInterrupt:
-                logger.info('#######Interrupted#########')
+                debug_logger.info('################Interrupted################')
                 try:
                     sys.exit(0)
                 except SystemExit:
                     os._exit(0)
             except:
-                logger.exception('#######unexpected#########')
+                logger.exception('unexpected error ooccurs, retrying to connect...')
+                continue
 
         try:
-            logger.warning('application quits...')
+            logger.warning('APP QUIT')
             sys.exit(1)
         except SystemExit:
             os._exit(1)

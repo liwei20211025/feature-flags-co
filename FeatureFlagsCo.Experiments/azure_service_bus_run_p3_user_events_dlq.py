@@ -16,4 +16,4 @@ if __name__ == '__main__':
     subscription = get_config_value('p3', 'subscription_Q5')
 
     P3AzureGetExptUserEventsReceiver(sb_host, sb_sas_policy, sb_sas_key, redis_host, redis_port, redis_passwd).consume(
-        (topic, subscription),  is_dlq=True)
+        (topic, subscription), is_dlq=True)
