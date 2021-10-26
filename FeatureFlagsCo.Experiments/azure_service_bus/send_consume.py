@@ -62,6 +62,12 @@ class AzureServiceBus:
         self._redis_passwd = redis_passwd
         self._init__redis_connection(
             redis_host, redis_port, redis_passwd)
+        self._sender_pool = {}
+
+    def clear(self):
+        for _, sender in self._sender_pool.items():
+            sender.close()
+        self._sender_pool.clear()
 
     def _init__redis_connection(self, host, port, password):
         try:
@@ -97,10 +103,20 @@ class AzureServiceBus:
         return json.loads(value.decode()) if value else None
 
     def redis_set(self, id, value):
-        self.redis.set(id, str.encode(json.dumps(value)))
+        return self.redis.set(id, str.encode(json.dumps(value)))
+
+    def redis_pipeline_set_del(self, ops=[]):
+        pipeline = self.redis.pipeline()
+        for op in ops:
+            command, key, value = op
+            if command == 'del':
+                pipeline.delete(key)
+            else:
+                pipeline.set(key, str.encode(json.dumps(value)))
+        return pipeline.execute()
 
     def redis_del(self, *id):
-        self.redis.delete(*id)
+        return self.redis.delete(*id)
 
 
 class AzureSender(AzureServiceBus):
@@ -144,13 +160,15 @@ class AzureSender(AzureServiceBus):
             bus = self._init_azure_service_bus(
                 self._sb_host, self._sb_sas_policy, self._sb_sas_key)
             with bus:
-                sender = bus.get_topic_sender(topic_name=topic)
-                with sender:
-                    send_batch_messages(sender, topic, origin, *messages)
-        else:
-            sender = bus.get_topic_sender(topic_name=topic)
-            with sender:
+                if not (sender := self._sender_pool.get(topic, None)):
+                    sender = bus.get_topic_sender(topic_name=topic)
+                    self._sender_pool[topic] = sender
                 send_batch_messages(sender, topic, origin, *messages)
+        else:
+            if not (sender := self._sender_pool.get(topic, None)):
+                sender = bus.get_topic_sender(topic_name=topic)
+                self._sender_pool[topic] = sender
+            send_batch_messages(sender, topic, origin, *messages)
         debug_logger.info(f'send to topic: {topic}, origin: {origin}, num of message: {len(messages)}')
 
 
@@ -160,7 +178,11 @@ class AzureReceiver(ABC, AzureSender):
     def handle_body(self, topic, body):
         pass
 
-    def consume(self, topic=(), connection_retries=3, settlement_retries=3, is_dlq=False):
+    def consume(self, topic=(),
+                prefetch_count=10,
+                connection_retries=3,
+                settlement_retries=3,
+                is_dlq=False):
 
         def receive_message(receiver: ServiceBusReceiver, settlement_retries=3, is_dlq=False):
             if is_dlq:
@@ -215,7 +237,6 @@ class AzureReceiver(ABC, AzureSender):
                                         receiver.defer_message(msg)
                                     else:
                                         receiver.dead_letter_message(msg, reason=str(last_error), error_description='Application level failure')
-
                                 break
                             except (MessageAlreadySettled, MessageLockLostError, MessageNotFoundError):
                                 # Message was already settled, either somewhere earlier in this processing or by another node.  Continue.
@@ -227,7 +248,6 @@ class AzureReceiver(ABC, AzureSender):
                                 # Any other undefined service errors during settlement.  Can be transient, and can retry, but should be logged, and alerted on high volume.
                                 logger.exception('undefined service errors during settlement, retrying...')
                                 continue
-                    return
                 except ServiceBusError:
                     # some service bus error in connection that can be handled at the higher level, such as connection/auth errors
                     raise
@@ -248,8 +268,13 @@ class AzureReceiver(ABC, AzureSender):
                 with self._bus:
                     if topic:
                         topic_name, subscription = topic
-                        receiver = self._bus.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription) if not is_dlq else self._bus.get_subscription_receiver(
-                            topic_name=topic_name, subscription_name=subscription, sub_queue=ServiceBusSubQueue.DEAD_LETTER)
+                        if not is_dlq:
+                            receiver = self._bus.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription, prefetch_count=prefetch_count)
+                        else:
+                            receiver = self._bus.get_subscription_receiver(topic_name=topic_name,
+                                                                           subscription_name=subscription,
+                                                                           prefetch_count=prefetch_count,
+                                                                           sub_queue=ServiceBusSubQueue.DEAD_LETTER)
                     else:
                         try:
                             sys.exit(0)
@@ -260,6 +285,7 @@ class AzureReceiver(ABC, AzureSender):
                         receive_message(receiver, settlement_retries=settlement_retries, is_dlq=is_dlq)
             except ServiceBusError:
                 logger.exception('An error occurred in service bus level, retrying to connect...')
+                self.clear()
                 time.sleep(10)
                 continue
             except KeyboardInterrupt:
@@ -274,6 +300,7 @@ class AzureReceiver(ABC, AzureSender):
 
         try:
             logger.warning('APP QUIT', extra=get_custom_properties(topic=topic_name, subscription=subscription, reason='TOO MANY RETRIES'))
+            self.clear()
             sys.exit(1)
-        except SystemExit:
+        except:
             os._exit(1)

@@ -77,31 +77,33 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
         # last event received within N minutes, no potential recepton delay, proceed data deletion
         else:
             p2_debug_logger.info('Update info and delete stopped Experiment data')
+            ops = []
             # del expt
-            self.redis_del(expt_id)
+            ops.append(('del', expt_id, None))
             # TODO move to somewhere
-            # ACTION : Get from Redis > dict_flag_acitveExpts
+            # ACTION : Update dict_flag_acitveExpts
             id = 'dict_ff_act_expts_%s_%s' % (expt['EnvId'], expt['FlagId'])
             dict_flag_acitveExpts = self.redis_get(id)
+            flag_active_expts = []
             if dict_flag_acitveExpts:
-                dict_flag_acitveExpts[expt['FlagId']].remove(expt_id)
-                self.redis_set(id, dict_flag_acitveExpts)
-            # Update dict_flag_acitveExpts
-            # ACTION : Get from Redis > dict_flag_acitveExpts
+                flag_active_expts = [ele for ele in dict_flag_acitveExpts[expt['FlagId']] if ele != expt_id]
+                ops.append(('set', id, flag_active_expts))
+            # ACTION : Update dict_customEvent_acitveExpts
             id = 'dict_event_act_expts_%s_%s' % (expt['EnvId'], expt['EventName'])
             dict_customEvent_acitveExpts = self.redis_get(id)
+            customEvent_active_expts = []
             if dict_customEvent_acitveExpts:
-                dict_customEvent_acitveExpts[expt['EventName']].remove(expt_id)
-                self.redis_set(id, dict_customEvent_acitveExpts)
+                customEvent_active_expts = [ele for ele in dict_customEvent_acitveExpts[expt['EventName']] if ele != expt_id]
+                ops.append(('set', id, customEvent_active_expts))
             # ACTION: Delete in Redis > list_FFevent related to FlagID
             # ACTION: Delete in Redis > list_Exptevent related to EventName
-            if dict_flag_acitveExpts and not dict_flag_acitveExpts.get(expt['FlagId'], None):
+            if dict_flag_acitveExpts and not flag_active_expts:
                 id = '%s_%s' % (expt['EnvId'], expt['FlagId'])
-                self.redis_del(id)
+                ops.append(('del', id, None))
                 # TODO move to somewhere
-            if dict_customEvent_acitveExpts and not dict_customEvent_acitveExpts.get(expt['EventName'], None):
+            if dict_customEvent_acitveExpts and not customEvent_active_expts:
                 id = '%s_%s' % (expt['EnvId'], expt['EventName'])
-                self.redis_del(id)
+                ops.append(('del', id, None))
                 # TODO move to somewhere
 
             # del expt expired time
@@ -110,7 +112,8 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 expt_last_exec_time = dict_from_redis.get(expt_id, None)
                 if expt_last_exec_time:
                     dict_from_redis.pop(expt_id, None)
-                    self.redis_set('dict_expt_last_exec_time', dict_from_redis)
+                    ops.append(('set', 'dict_expt_last_exec_time', dict_from_redis))
+            self.redis_pipeline_set_del(ops)  # noqa
             p2_logger.info('EXPT FINISH', extra=get_custom_properties(topic=topic, expt=expt_id))
 
     def handle_body(self, topic, body):
@@ -128,8 +131,8 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             pass
         else:
             interval = datetime.now() - datetime.strptime(last_exec_time, fmt)
-            if interval.total_seconds() < self._wait_timeout:
-                interval_to_wait = self._wait_timeout - interval.total_seconds()
+            if abs(interval.total_seconds()) < self._wait_timeout:
+                interval_to_wait = self._wait_timeout - abs(interval.total_seconds())
         if interval_to_wait:
             sleep(interval_to_wait)
         dict_expt_last_exec_time[expt_id] = datetime.now().strftime(fmt)
@@ -164,18 +167,21 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 output_to_mq = calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=p2_debug_logger)
 
             # send result to Q3
+            s1 = datetime.now()
             topic = get_config_value('p2', 'topic_Q3')
             subscription = get_config_value('p2', 'subscription_Q3')
             self.send(self._bus, topic, subscription, output_to_mq)
-
-            p2_debug_logger.info(f'#########expt result: {output_to_mq} to Q3#########')
+            s2 = datetime.now()
+            p2_debug_logger.info(f'#########expt result: {output_to_mq} to Q3 in seconds: {(s2-s1).total_seconds()}#########')
             # experiment not finished
             if not expt['EndExptTime']:
                 # send back exptId to Q2
+                s1 = datetime.now()
                 topic = get_config_value('p2', 'topic_Q2')
                 subscription = get_config_value('p2', 'subscription_Q2')
                 self.send(self._bus, topic, subscription, expt_id)
-                p2_debug_logger.info(f'#########expt: {expt_id} back to Q2#########')
+                s2 = datetime.now()
+                p2_debug_logger.info(f'#########expt: {expt_id} back to Q2 in seconds: {(s2-s1).total_seconds()}#########')
             else:
                 # experiment has got its deadline
                 # Decision to delete or not event related data

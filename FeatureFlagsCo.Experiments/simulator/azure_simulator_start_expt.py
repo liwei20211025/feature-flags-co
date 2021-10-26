@@ -27,7 +27,8 @@ if __name__ == '__main__':
     with bus:
         # Expt1
         # Q1 start
-        for expt_num in range(1, 2):
+        expts = []
+        for expt_num in range(1, 11):
             Q1_START = {
                 "ExptId": f"FF__38__48__103__PayButton_{expt_num}_exp{expt_num}",
                 "IterationId": "2",
@@ -43,12 +44,17 @@ if __name__ == '__main__':
                 "StartExptTime": "2021-09-20T21:00:00.123456",
                 "EndExptTime": ""
             }
-            AzureSender(None, redis_host, redis_port, redis_passwd).send(
-                bus, topic_1, origin_1, Q1_START)
-            logger.info('send to Q1 expt start')
+            expts.append(Q1_START)
+        sender = AzureSender(None, redis_host, redis_port, redis_passwd)
+        sender.send(bus, topic_1, origin_1, *expts)
+        sender.clear()
+        logger.info('send to Q1 expt start')
+        for expt_num in range(1, 11):
+            sender = AzureSender(None, redis_host, redis_port, redis_passwd)
+
             for group in range(1, 4):
                 events = []
-                for user in range(100):
+                for user in range(1000):
                     # Q4
                     Q4 = {
                         "RequestPath": "index/paypage",
@@ -65,12 +71,12 @@ if __name__ == '__main__':
                         "phoneNumber": "135987652543"
                     }
                     events.append(Q4)
-                AzureSender(None, redis_host, redis_port, redis_passwd).send(bus, topic_4, origin_4, *events)
+                sender.send(bus, topic_4, origin_4, *events)
 
             for group in range(1, 4):
                 events = []
-                weight = choice([i for i in range(10, 31)])
-                for user in range(100 - weight * group):
+                weight = choice([i for i in range(100, 310)])
+                for user in range(1000 - weight * group):
                     Q5 = {
                         "Route": "index",
                         "Secret": "YjA1LTNiZDUtNCUyMDIxMDkwNDIyMTMxNV9fMzhfXzQ4X18xMDNfX2RlZmF1bHRfNzc1Yjg=",
@@ -102,4 +108,6 @@ if __name__ == '__main__':
                         "AccountId": "38"
                     }
                     events.append(Q5)
-                AzureSender(None, redis_host, redis_port, redis_passwd).send(bus, topic_5, origin_5, *events)
+                sender.send(bus, topic_5, origin_5, *events)
+
+            sender.clear()
