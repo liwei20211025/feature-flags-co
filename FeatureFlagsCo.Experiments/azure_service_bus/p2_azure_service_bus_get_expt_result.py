@@ -51,7 +51,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             list_user_events = [user_event for user_event in list_user_events if datetime.strptime(user_event['TimeStamp'], fmt) <= ExptEndTime]
         return expt, ExptStartTime, ExptEndTime, flag_id, event_name, env_id, list_ff_events, list_user_events
 
-    def __update_redis_with_EndExpt(self, list_ff_events, list_user_events, fmt, ExptStartTime, ExptEndTime, expt_id, expt):
+    def __update_redis_with_EndExpt(self, list_ff_events, list_user_events, fmt, ExptStartTime, ExptEndTime, expt_id, expt, topic='q2'):
         # Time to take decision to wait or not the upcomming event data
         para_delay_reception = 1
         para_wait_processing = 1
@@ -74,7 +74,6 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             subscription = get_config_value('p2', 'subscription_Q2')
             self.send(self._bus, topic, subscription, expt_id)
             p2_debug_logger.info(f'a delay to acept events after deadline of {expt_id}')
-            p2_logger.info('EXPT CONTINUE', extra=get_custom_properties(ExptId=expt_id, reason='DELAY AFTER DEADLINE'))
         # last event received within N minutes, no potential recepton delay, proceed data deletion
         else:
             p2_debug_logger.info('Update info and delete stopped Experiment data')
@@ -112,7 +111,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 if expt_last_exec_time:
                     dict_from_redis.pop(expt_id, None)
                     self.redis_set('dict_expt_last_exec_time', dict_from_redis)
-            p2_logger.info('EXPT FINISH', extra=get_custom_properties(ExptId=expt_id, reason='EXPT CLOSED BY USER'))
+            p2_logger.info('EXPT FINISH', extra=get_custom_properties(topic=topic, expt=expt_id))
 
     def handle_body(self, topic, body):
         starttime = datetime.now()
@@ -136,7 +135,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
         dict_expt_last_exec_time[expt_id] = datetime.now().strftime(fmt)
         self.redis_set('dict_expt_last_exec_time', dict_expt_last_exec_time)
         self._last_expt_id = expt_id
-        p2_debug_logger.info("########p2 gets %r#########" % value)
+        p2_debug_logger.info(f'########p2 gets {value}#########')
         # If experiment info exist
         if value:
             # Parse experiment info
@@ -168,19 +167,21 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
             topic = get_config_value('p2', 'topic_Q3')
             subscription = get_config_value('p2', 'subscription_Q3')
             self.send(self._bus, topic, subscription, output_to_mq)
-            p2_logger.info(f'EXPT RESULT: {expt_id}', extra=get_custom_properties(**output_to_mq))
 
+            p2_debug_logger.info(f'#########expt result: {output_to_mq} to Q3#########')
             # experiment not finished
             if not expt['EndExptTime']:
                 # send back exptId to Q2
                 topic = get_config_value('p2', 'topic_Q2')
                 subscription = get_config_value('p2', 'subscription_Q2')
                 self.send(self._bus, topic, subscription, expt_id)
-                p2_logger.info('EXPT CONTINUE', extra=get_custom_properties(ExptId=expt_id, reason='NO DEADLINE'))
+                p2_debug_logger.info(f'#########expt: {expt_id} back to Q2#########')
             else:
                 # experiment has got its deadline
                 # Decision to delete or not event related data
-                self.__update_redis_with_EndExpt(list_ff_events, list_user_events, fmt, ExptStartTime, ExptEndTime, expt_id, expt)
+                topic = get_config_value('p2', 'topic_Q2')
+                self.__update_redis_with_EndExpt(list_ff_events, list_user_events, fmt, ExptStartTime, ExptEndTime, expt_id, expt, topic)
             endtime = datetime.now()
             delta = endtime - starttime
-            p2_debug_logger.info('######### p2 processing time in seconds: %r #########' % delta.total_seconds())
+            p2_debug_logger.info(f'#########p2 processing time in seconds: {delta.total_seconds()}#########')
+            p2_logger.info('EXPT HEALTHY', extra=get_custom_properties(topic=topic, expt=expt_id))

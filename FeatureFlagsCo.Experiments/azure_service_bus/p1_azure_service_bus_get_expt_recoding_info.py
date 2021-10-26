@@ -21,7 +21,7 @@ class P1AzureGetExptRecordingInfoReceiver(AzureReceiver):
                     # Deal with EndExptTime case
                     if end:
                         self.redis_set(key, body)
-                        p1_logger.info(f'EXPT END: {key}', extra=get_custom_properties(**body))
+                        p1_logger.info('EXPT ENDING', extra=get_custom_properties(topic=topic, expt=key))
                     else:
                         # Continue format check
                         is_valid_EventType = check_format(body, 'EventType', int, [1, 2, 3])
@@ -42,22 +42,20 @@ class P1AzureGetExptRecordingInfoReceiver(AzureReceiver):
                         topic = get_config_value('p2', 'topic_Q2')
                         subscription = get_config_value('p2', 'subscription_Q2')
                         self.send(self._bus, topic, subscription, key)
-                        p1_logger.info(f'EXPT START: {key}', extra=get_custom_properties(**body))
+                        p1_logger.info('EXPT STARTING', extra=get_custom_properties(topic=topic, expt=key))
                         if not check_latest_expt:
-                            body['reason'] = 'EXPT PARAMS INVALID'
-                            body['is_valid_EventType'] = is_valid_EventType
-                            body['is_valid_CustomEventTrackOption'] = is_valid_CustomEventTrackOption
-                            body['is_valid_CustomEventSuccessCriteria'] = is_valid_CustomEventSuccessCriteria
-                            p1_logger.warning('EXPT NOT RECOGNISED', extra=get_custom_properties(**body))
+                            p1_logger.warning('EXPT NOT RECOGNISED', extra=get_custom_properties(topic=topic,
+                                                                                                 expt=key,
+                                                                                                 reason='EXPT PARAMS INVALID',
+                                                                                                 is_valid_EventType=is_valid_EventType,
+                                                                                                 is_valid_CustomEventTrackOption=is_valid_CustomEventTrackOption,
+                                                                                                 is_valid_CustomEventSuccessCriteria=is_valid_CustomEventSuccessCriteria))
                 else:
-                    body['reason'] = 'EXPT NOT FOUND'
-                    p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(**body))
+                    p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(topic=topic, expt=key, reason='EXPT NOT FOUND'))
             else:
-                body['reason'] = 'UNVALID FORMAT'
-                body['missing_keys'] = missing_keys
-                p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(**body))
+                p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(topic=topic, reason='UNVALID FORMAT', missing_keys=missing_keys))
         else:
-            p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(reason='FORBIDDEN INPUT'))
+            p1_logger.warning('EXPT IGNOR', extra=get_custom_properties(topic=topic, reason='FORBIDDEN INPUT'))
 
     def __setup_relation_between_obj_expt(self, dict_expt_id, key, expt_id):
         dict_acitveExpts = dict_from_redis if (

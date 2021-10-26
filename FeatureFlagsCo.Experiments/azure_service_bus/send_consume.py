@@ -273,7 +273,7 @@ class AzureReceiver(ABC, AzureSender):
                 continue
 
         try:
-            logger.warning('APP QUIT')
+            logger.warning('APP QUIT', extra=get_custom_properties(topic=topic_name, subscription=subscription, reason='TOO MANY RETRIES'))
             sys.exit(1)
         except SystemExit:
             os._exit(1)

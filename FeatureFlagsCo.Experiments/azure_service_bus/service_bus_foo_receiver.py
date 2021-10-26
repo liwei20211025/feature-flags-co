@@ -13,4 +13,4 @@ class FooReceiver(AzureReceiver):
     def handle_body(self, topic, body):
         print('topic: %s' % topic)
         print('received: %s' % body)
-        foo_logger.info('FOO', extra=get_custom_properties(**body))
+        foo_logger.info('FOO', extra=get_custom_properties(topic=topic))

@@ -19,23 +19,24 @@ if __name__ == '__main__':
 
     bus = ServiceBusClient.from_connection_string(conn_str=sb_conn_str, logging_enable=True)
     with bus:
-        # Expt1
-        #  Q1 end
-        Q1_END = {
-            "ExptId": 'FF__38__48__103__PayButton_exp1',
-            "IterationId": "2",
-            "EnvId": "103",
-            "FlagId": "FF__38__48__103__PayButton",
-            "BaselineVariation": "1",
-            "Variations": ["1", "2", "3"],
-            "EventName": "ButtonPayTrack",
-            'EventType': 1,
-            'CustomEventTrackOption': 1,
-            'CustomEventSuccessCriteria': 1,
-            'CustomEventUnit': None,
-            "StartExptTime": "2021-09-20T21:00:00.123456",
-            "EndExptTime": "2021-10-15T19:00:00.123456"
-        }
-        AzureSender(None, redis_host, redis_port, redis_passwd).send(
-            bus, topic_1, origin_1, Q1_END)
-        logger.info('send to Q1 expt end')
+        for expt_num in range(1, 2):
+            # Expt1
+            #  Q1 end
+            Q1_END = {
+                "ExptId": f"FF__38__48__103__PayButton_{expt_num}_exp{expt_num}",
+                "IterationId": "2",
+                "EnvId": "103",
+                "FlagId": f"FF__38__48__103__PayButton_{expt_num}",
+                "BaselineVariation": "1",
+                "Variations": ["1", "2", "3"],
+                "EventName": f"ButtonPayTrack_{expt_num}",
+                'EventType': 1,
+                'CustomEventTrackOption': 1,
+                'CustomEventSuccessCriteria': 1,
+                'CustomEventUnit': None,
+                "StartExptTime": "2021-09-20T21:00:00.123456",
+                "EndExptTime": "2021-10-15T19:00:00.123456"
+            }
+            AzureSender(None, redis_host, redis_port, redis_passwd).send(
+                bus, topic_1, origin_1, Q1_END)
+            logger.info('send to Q1 expt end')
