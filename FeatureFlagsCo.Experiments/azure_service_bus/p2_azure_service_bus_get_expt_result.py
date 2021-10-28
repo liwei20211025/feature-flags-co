@@ -105,6 +105,7 @@ class P2AzureGetExptResultReceiver(AzureReceiver):
                 id = '%s_%s' % (expt['EnvId'], expt['EventName'])
                 ops.append(('del', id, None))
                 # TODO move to somewhere
+            self._last_expt_id = ''
 
             # del expt expired time
             dict_from_redis = self.redis_get('dict_expt_last_exec_time')
