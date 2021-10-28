@@ -26,6 +26,15 @@ namespace FeatureFlagsCo.Messaging.Services
         {
             _logger = logger;
             _experimentsService = experimentsService;
+            using (_logger.BeginScope(new Dictionary<string, string>()
+                {
+                    ["topic"] = TopicPath,
+                    ["subscription"] = "standard"
+                }
+            ))
+            {
+                _logger.LogTrace("RECEIVER START");
+            }
         }
 
         public override Task Processor_ProcessErrorAsync(ProcessErrorEventArgs arg)
