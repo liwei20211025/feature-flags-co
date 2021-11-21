@@ -1,7 +1,9 @@
 import logging
+from distutils.util import strtobool
+
 from azure_service_bus.azure_bus_health_check import AzureHealthCheck
-from redismq.redis_health_check import RedisHealthCheck
 from config.config_handling import get_config_value
+from redismq.redis_health_check import RedisHealthCheck
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.ERROR,
@@ -12,7 +14,7 @@ if __name__ == '__main__':
     redis_port = get_config_value('redis', 'redis_port')
     redis_passwd = get_config_value('redis', 'redis_passwd')
     try:
-        redis_ssl = bool(get_config_value('redis', 'redis_ssl'))
+        redis_ssl = strtobool(get_config_value('redis', 'redis_ssl'))
         wait_timeout = float(get_config_value('p2', 'wait_timeout'))
     except:
         redis_ssl = False

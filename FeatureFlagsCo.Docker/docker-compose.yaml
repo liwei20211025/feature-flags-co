@@ -55,22 +55,22 @@ services:
   #     - developmentportal
   #     - developmentapi
 
-  rabbitmq:
-    image: rabbitmq:3.9-management
-    container_name: rabbitmq
-    restart: always
-    hostname: rabbitmq
-    ports:
-      - 15672:15672
-      - 5672:5672
-    volumes:
-      - ./data:/var/lib/rabbitmq
-    networks:
-      - ffc
-    profiles:
-      - docker
-      - development
-      - backend
+#  rabbitmq:
+#    image: rabbitmq:3.9-management
+#    container_name: rabbitmq
+#    restart: always
+#    hostname: rabbitmq
+#    ports:
+#      - 15672:15672
+#      - 5672:5672
+#    volumes:
+#      - ./data:/var/lib/rabbitmq
+#    networks:
+#      - ffc
+#    profiles:
+#      - docker
+#      - development
+#      - backend
 
   mongodb:
     image: mongo
@@ -131,6 +131,7 @@ services:
   elasticsearch:
     image: "docker.elastic.co/elasticsearch/elasticsearch:7.14.0"
     container_name: elasticsearch
+    restart: always
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
@@ -151,6 +152,7 @@ services:
     profiles:
       - docker
       - development
+  
   es-kibana:
     image: "docker.elastic.co/kibana/kibana:7.14.0"
     environment:
@@ -166,6 +168,7 @@ services:
   
   redis:
     image: 'bitnami/redis:latest'
+    restart: always
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     networks:
@@ -176,8 +179,6 @@ services:
       - docker
       - development
       - backend
-
-  
 
   api:
     build:
