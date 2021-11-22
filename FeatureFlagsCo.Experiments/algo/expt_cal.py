@@ -86,12 +86,12 @@ def calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=l
     for var in expt['Variations']:
         if var not in dict_var_occurence.keys():
             output.append({'variation': var,
-                           'conversion': -1,
-                           'uniqueUsers': -1,
-                           'conversionRate': -1,
-                           'changeToBaseline': -1,
-                           'confidenceInterval': [-1, -1],
-                           'pValue': -1,
+                           'conversion': {'isEmpty': True, 'value' : 0},
+                           'uniqueUsers': {'isEmpty': True, 'value' : 0},
+                           'conversionRate': {'isEmpty': True, 'value' : 0},
+                           'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                           'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                           'pValue': {'isEmpty': True, 'value' : 0},
                            'isBaseline': True if var_baseline == var else False,
                            'isWinner': False,
                            'isInvalid': True
@@ -104,31 +104,32 @@ def calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=l
                 dist_item = [1 for i in range(dict_expt_occurence[item])] + [0 for i in range(dict_var_occurence[item] - dict_expt_occurence[item])]
                 rate, min, max = mean_confidence_interval(dist_item, 1 - para_alpha)
                 if math.isnan(min) or math.isnan(max):
-                    confidenceInterval = [-1, -1]
+                    confidenceInterval = {'isEmpty': True, 'value' : [0,0]},
                 else:
-                    confidenceInterval = [0 if round(min, 3) < 0 else round(min, 3), 1 if round(max, 3) > 1 else round(max, 3)]
-                pValue = -1
+                    confidenceInterval = {'isEmpty': False, 
+                                          'value' :[0 if round(min, 3) < 0 else round(min, 3), 1 if round(max, 3) > 1 else round(max, 3)]
+                    }
+                pValue = {'isEmpty': True, 'value' : 0}
                 output.append({'variation': item,
-                               'conversion': dict_expt_occurence[item],
-                               'uniqueUsers': dict_var_occurence[item],
-                               'conversionRate': round(rate, 3),
-                               'changeToBaseline': -1,
+                               'conversion': {'isEmpty': False, 'value' : dict_expt_occurence[item]},
+                               'uniqueUsers': {'isEmpty': False, 'value' : dict_var_occurence[item]},
+                               'conversionRate': {'isEmpty': False, 'value' : round(rate, 3)},
+                               'changeToBaseline': {'isEmpty': True, 'value' : 0},
                                'confidenceInterval': confidenceInterval,
-                               'pValue': -1,
+                               'pValue': pValue,
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
                                })
             else:
                 output.append({'variation': item,
-                               'conversion': 0,
-                               'uniqueUsers': dict_var_occurence[item],
-                               'conversionRate': 0,
-                               'changeToBaseline': -1,
-                               'confidenceInterval': [-1, -1],
-                               'pValue': -1,
-                               'isBaseline': True if
-                               var_baseline == item else False,
+                               'conversion': {'isEmpty': False, 'value' : 0},
+                               'uniqueUsers': {'isEmpty': False, 'value' : dict_var_occurence[item]},
+                               'conversionRate': {'isEmpty': False, 'value' : 0},
+                               'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                               'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                               'pValue': {'isEmpty': True, 'value' : 0},
+                               'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
                                })
@@ -141,11 +142,15 @@ def calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=l
                 dist_item = [1 for i in range(dict_expt_occurence[item])] + [0 for i in range(dict_var_occurence[item] - dict_expt_occurence[item])]
                 rate, min, max = mean_confidence_interval(dist_item, 1 - para_alpha)
                 if math.isnan(min) or math.isnan(max):
-                    confidenceInterval = [-1, -1]
+                    confidenceInterval = {'isEmpty': True, 'value' : [0,0]}
                 else:
-                    confidenceInterval = [0 if round(min, 2) < 0 else round(min, 2), 1 if round(max, 2) > 1 else round(max, 2)]
+                    confidenceInterval = {'isEmpty': False, 
+                                          'value' : [0 if round(min, 2) < 0 else round(min, 2), 1 if round(max, 2) > 1 else round(max, 2)]
+                    }
                 # Calculate pValue
-                pValue = round(1 - stats.ttest_ind(dist_baseline, dist_item).pvalue, 2)
+                pValue = {'isEmpty': False, 
+                          'value' : round(1 - stats.ttest_ind(dist_baseline, dist_item).pvalue, 2)
+                }
                 # Calculate Power
                 try:
                     s1 = int(dict_var_occurence[var_baseline])
@@ -177,7 +182,7 @@ def calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=l
                     logger.info('ERROR in power calculation, return power_valid False')
                     power_valid = False
 
-                if (pValue < (1 - para_alpha)) or math.isnan(pValue):
+                if (pValue.value < (1 - para_alpha)) or math.isnan(pValue.value):
                     pValue_valid = False
                 else:
                     pValue_valid = True
@@ -185,26 +190,29 @@ def calc_customevent_conversion(expt, list_ff_events, list_user_events, logger=l
                     isInvalid = False
                 else:
                     isInvalid = True
-
+                    
+                if math.isnan(pValue.value):
+                    pValue = {'isEmpty': True, 'value' : 0}
+                                        
                 output.append({'variation': item,
-                               'conversion': dict_expt_occurence[item],
-                               'uniqueUsers': dict_var_occurence[item],
-                               'conversionRate': round(rate, 3),
-                               'changeToBaseline': round(rate, 3) - round(BaselineRate, 3),
+                               'conversion': {'isEmpty': False, 'value' : dict_expt_occurence[item]},
+                               'uniqueUsers': {'isEmpty': False, 'value' : dict_var_occurence[item]},
+                               'conversionRate': {'isEmpty': False, 'value' : round(rate, 3)},
+                               'changeToBaseline': {'isEmpty': False, 'value' : round(rate, 3) - round(BaselineRate, 3)},
                                'confidenceInterval': confidenceInterval,
-                               'pValue': -1 if math.isnan(pValue) else pValue,
+                               'pValue': pValue,
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': isInvalid
                                })
             else:
                 output.append({'variation': item,
-                               'conversion': 0,
-                               'uniqueUsers': dict_var_occurence[item],
-                               'conversionRate': 0,
-                               'changeToBaseline': -1,
-                               'confidenceInterval': [-1, -1],
-                               'pValue': -1,
+                               'conversion': {'isEmpty': False, 'value' : 0},
+                               'uniqueUsers': {'isEmpty': False, 'value' : dict_var_occurence[item]},
+                               'conversionRate': {'isEmpty': False, 'value' : 0},
+                               'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                               'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                               'pValue': {'isEmpty': True, 'value' : 0},
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
@@ -314,11 +322,11 @@ def calc_customevent_numeric(expt, list_ff_events, list_user_events, logger=logg
     for var in expt['Variations']:
         if var not in dict_var_occurence.keys():
             output.append({'variation': var,
-                           'totalEvents': -1,
-                           'average': -1,
-                           'changeToBaseline': -1,
-                           'confidenceInterval': [-1, -1],
-                           'pValue': -1,
+                           'totalEvents': {'isEmpty': True, 'value' : 0},
+                           'average': {'isEmpty': True, 'value' : 0},
+                           'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                           'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                           'pValue': {'isEmpty': True, 'value' : 0},
                            'isBaseline': True if var_baseline == var else False,
                            'isWinner': False,
                            'isInvalid': True
@@ -331,29 +339,30 @@ def calc_customevent_numeric(expt, list_ff_events, list_user_events, logger=logg
                 dist_item = dict_var_listValues[item]
                 rate, min, max = mean_confidence_interval(dist_item)
                 if math.isnan(min) or math.isnan(max):
-                    confidenceInterval = [-1, -1]
+                    confidenceInterval = {'isEmpty': True, 'value' : [0,0]},
                 else:
-                    confidenceInterval = [0 if round(min, 3) < 0 else round(min, 3), round(max, 3)]
+                    confidenceInterval = {'isEmpty': False, 
+                                          'value' :[0 if round(min, 3) < 0 else round(min, 3), round(max, 3)]
+                    }
                 pValue = -1
                 output.append({'variation': item,
-                               'totalEvents': len(dict_var_listValues[item]),
-                               'average': round(rate, 3),
-                               'changeToBaseline': -1,
+                               'totalEvents': {'isEmpty': False, 'value' : len(dict_var_listValues[item])},
+                               'average': {'isEmpty': False, 'value' : round(rate, 3)},
+                               'changeToBaseline':  {'isEmpty': True, 'value' : 0},
                                'confidenceInterval': confidenceInterval,
-                               'pValue': -1,
+                               'pValue': {'isEmpty': True, 'value' : 0},
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
                                })
             else:
                 output.append({'variation': item,
-                               'totalEvents': 0,
-                               'average': -1,
-                               'changeToBaseline': -1,
-                               'confidenceInterval': [-1, -1],
-                               'pValue': -1,
-                               'isBaseline': True if
-                               var_baseline == item else False,
+                               'totalEvents': {'isEmpty': False, 'value' : 0},
+                               'average': {'isEmpty': True, 'value' : 0},
+                               'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                               'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                               'pValue': {'isEmpty': True, 'value' : 0},
+                               'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
                                })
@@ -366,10 +375,14 @@ def calc_customevent_numeric(expt, list_ff_events, list_user_events, logger=logg
                 dist_item = dict_var_listValues[item]
                 rate, min, max = mean_confidence_interval(dist_item)
                 if math.isnan(min) or math.isnan(max):
-                    confidenceInterval = [-1, -1]
+                    confidenceInterval = {'isEmpty': True, 'value' : [0,0]},
                 else:
-                    confidenceInterval = [0 if round(min, 3) < 0 else round(min, 3), round(max, 3)]
-                pValue = round(1 - stats.ttest_ind(dist_baseline, dist_item).pvalue, 3)
+                    confidenceInterval = {'isEmpty': False, 
+                                          'value'  : [0 if round(min, 3) < 0 else round(min, 3), round(max, 3)]
+                    }
+                pValue = {'isEmpty': False, 
+                          'value' : round(1 - stats.ttest_ind(dist_baseline, dist_item).pvalue, 2)
+                }                
                 # Calculate Power
                 try:
                     s1 = int(dict_var_occurence[var_baseline])
@@ -401,7 +414,7 @@ def calc_customevent_numeric(expt, list_ff_events, list_user_events, logger=logg
                     logger.info('ERROR in power calculation, return power_valid False')
                     power_valid = False
 
-                if (pValue < (1 - para_alpha)) or math.isnan(pValue):
+                if (pValue.value < (1 - para_alpha)) or math.isnan(pValue.value):
                     pValue_valid = False
                 else:
                     pValue_valid = True
@@ -409,24 +422,27 @@ def calc_customevent_numeric(expt, list_ff_events, list_user_events, logger=logg
                     isInvalid = False
                 else:
                     isInvalid = True
+                    
+                if math.isnan(pValue.value):
+                    pValue = {'isEmpty': True, 'value' : 0}
 
                 output.append({'variation': item,
-                               'totalEvents': len(dict_var_listValues[item]),
-                               'average': round(rate, 3),
-                               'changeToBaseline': round(rate, 3) - round(BaselineRate, 3),
+                               'totalEvents': {'isEmpty': False, 'value' : len(dict_var_listValues[item])},
+                               'average': {'isEmpty': False, 'value' : round(rate, 3)},
+                               'changeToBaseline': {'isEmpty': False, 'value' : round(rate, 3) - round(BaselineRate, 3)},
                                'confidenceInterval': confidenceInterval,
-                               'pValue': -1 if math.isnan(pValue) else pValue,
+                               'pValue': pValue,
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': isInvalid
                                })
             else:
                 output.append({'variation': item,
-                               'totalEvents': 0,
-                               'average': -1,
-                               'changeToBaseline': -1,
-                               'confidenceInterval': [-1, -1],
-                               'pValue': -1,
+                               'totalEvents': {'isEmpty': False, 'value' : 0},
+                               'average': {'isEmpty': True, 'value' : 0},
+                               'changeToBaseline': {'isEmpty': True, 'value' : 0},
+                               'confidenceInterval': {'isEmpty': True, 'value' : [0,0]},
+                               'pValue': {'isEmpty': True, 'value' : 0},
                                'isBaseline': True if var_baseline == item else False,
                                'isWinner': False,
                                'isInvalid': True
