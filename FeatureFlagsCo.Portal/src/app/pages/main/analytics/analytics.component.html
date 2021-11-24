@@ -1,9 +1,13 @@
 <section class="body">
   <div class="content">
     <div nz-row class="header">
+      <button nz-button nzType="primary" (click)="onOpenAddDataSoureModal()">
+        <i nz-icon nzType="plus" nzTheme="outline"></i>
+        添加数据源
+      </button>
       <button nz-button nzType="primary" (click)="onCreateCard()">
         <i nz-icon nzType="plus" nzTheme="outline"></i>
-        新建看板
+        新建报表
       </button>
     </div>
     
@@ -56,7 +60,7 @@
               </div>
               <nz-list nzGrid class="item-grid">
                 <div nz-row [nzGutter]="16">
-                  <div nz-col [nzSpan]="8" *ngFor="let item of data.items">
+                  <div nz-col [nzSpan]="8" *ngFor="let item of data.items; let key=index">
                     <nz-list-item>
                       <nz-card>
                         <div style="text-align:right;margin-top:-8px;margin-right:-7px" *ngIf="data.isEditing">
@@ -88,7 +92,7 @@
                         <ng-container *ngIf="!data.isEditing">
                           {{item.value}}
                         </ng-container>
-                        <div *ngIf="data.isEditing" (click)="onSetDataSource(data, item)" style="border: 1px solid #4CB287;border-radius: 5px;padding: 12px 15px;font-size:18px;cursor:pointer;color: #4CB287;margin-top:5px">
+                        <div *ngIf="data.isEditing" (click)="onSetDataSource(data, item, key)" style="border: 1px solid #4CB287;border-radius: 5px;padding: 12px 15px;font-size:18px;cursor:pointer;color: #4CB287;margin-top:5px">
                           点击设置数据源
                         </div>
                       </ng-template>
@@ -97,9 +101,7 @@
                   <div nz-col [nzSpan]="8" *ngIf="data.isEditing">
                     <nz-list-item>
                       <nz-card>
-                        <nz-statistic
-                          [nzValueTemplate]="addItemTpl"
-                        ></nz-statistic>
+                        <nz-statistic  [nzValueTemplate]="addItemTpl"></nz-statistic>
                       </nz-card>
                       <ng-template #addItemTpl>
                         <div (click)="onAddItem(data)" style="border: 1px solid #4CB287;border-radius: 5px;padding: 12px 15px;font-size:18px;cursor:pointer;color: #4CB287;margin-top:5px">
@@ -108,7 +110,6 @@
                       </ng-template>
                     </nz-list-item>
                   </div>
-
                 </div>
               </nz-list>
             </nz-card>
@@ -122,8 +123,7 @@
             </ng-template>
             <ng-template #actionEdit>
               <a style="color: #9A95CC;" (click)="toggleEditingCard(data)">
-                <i *ngIf="!data.isEditing" nz-icon nzType="edit" nzTheme="outline"></i>
-                <i *ngIf="data.isEditing" nz-icon nzType="save" nzTheme="outline"></i>
+                <i nz-icon [nzType]="data.isEditing ? 'save' : 'edit'" nzTheme="outline"></i>
               </a>
             </ng-template>
           </nz-list-item>
@@ -137,14 +137,16 @@
 </ng-template>
 
 
-<nz-modal nzClassName="data-source" [(nzVisible)]="dataSourceModalVisible" (nzOnCancel)="dataSourceModalVisible=false">
+<nz-modal nzClassName="data-source" [nzMaskClosable]="false" [(nzVisible)]="dataSourceModalVisible" (nzOnCancel)="dataSourceModalVisible=false">
   <ng-container *nzModalContent>
-    <div nz-row [nzGutter]="0" class="">
-      {{currentDataItem.name}}
-    </div>
+    <app-new-report [dataSourceList]="dataSourceList" #newReport></app-new-report>
   </ng-container>
   <div *nzModalFooter>
     <button nz-button nzType="default" (click)="dataSourceModalVisible=false">取消</button>
     <button nz-button nzType="primary" (click)="onApplyDataSource()" >完成</button>
   </div>
 </nz-modal>
+
+<ng-template #addDataSourceTem>
+  <app-new-datasource #newDataSource></app-new-datasource>
+</ng-template>

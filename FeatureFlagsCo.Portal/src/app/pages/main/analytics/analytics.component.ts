@@ -1,89 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { AccountService } from 'src/app/services/account.service';
+import { AnalyticsService } from 'src/app/services/analytics.service';
 import { uuidv4 } from 'src/app/utils';
-
-enum CalculationType {
-  Count = 1,
-  Sum = 2,
-  Average = 3
-}
-
-interface IDataCard {
-  id: string,
-  name: string,
-  startTime: Date,
-  endTime: Date,
-  items: IDataItem[],
-  isLoading?: boolean, // only for UI
-  isEditing?: boolean
-}
-
-class DataCard {
-  id: string;
-  name: string;
-  startTime: Date;
-  endTime: Date;
-  items: IDataItem[];
-  isLoading?: boolean; // only for UI
-  isEditing?: boolean;
-
-  constructor(data?: IDataCard) {
-    if (data) {
-      this.id = data.id;
-      this.name = data.name;
-      this.startTime = data.startTime;
-      this.endTime = data.endTime;
-      this.isLoading = data.isLoading;
-      this.isEditing = data.isEditing;
-      this.items = [...data.items];
-    } else {
-      this.id = uuidv4();
-      this.isLoading = false;
-      this.isEditing = true;
-      this.items = [];
-      // new Array(6).fill({}).map((_i, index) => ({
-      //   id: uuidv4(),
-      //   name: null,
-      //   value: null,
-      //   unit: null,
-      //   color: null,
-      //   calculationType: CalculationType.Count
-      // }))
-    }
-  }
-
-  disabledStartDate = (startTime: Date): boolean => {
-    if (!startTime || !this.endTime) {
-      return false;
-    }
-    return startTime.getTime() > this.endTime.getTime();
-  }
- 
-  disabledEndDate = (endTime: Date): boolean => {
-    if (!endTime || !this.startTime) {
-      return false;
-    }
-    return endTime.getTime() <= this.startTime.getTime();
-  }
-
-  clearStartDate = (): void => {
-    this.startTime = null;
-  }
- 
-  clearEndDate = (): void => {
-    this.endTime = null;
-  }
-}
-
-interface IDataItem {
-  id: string,
-  name: string,
-  value: number,
-  dataSource: string,
-  unit: string,
-  color: string,
-  calculationType: CalculationType
-}
+import { NewDatasourceComponent } from './components/new-datasource/new-datasource.component';
+import { NewReportComponent } from './components/new-report/new-report.component';
+import { CalculationType, DataCard, dataSource, IDataCard, IDataItem } from './types/analytics';
 
 @Component({
   selector: 'app-analytics',
@@ -96,32 +19,66 @@ export class AnalyticsComponent implements OnInit {
   listData: DataCard[] = [];
   isLoading = false;
   dataSourceModalVisible = false;
+
+  private analyticBoardId: string = "";
+  private envID: number = null;
+
+  private currentItemIndex: number = 0;           // 点击设置数据源时的数据索引
+
+  public dataSourceList: dataSource[] = [];       // 数据源列表
+
+  @ViewChild("addDataSourceTem", {static: false}) addDataSoureTem: TemplateRef<any>;
+  @ViewChild("newDataSource", {static: false}) newDataSourceCom: NewDatasourceComponent;
+  @ViewChild("newReport", {static: false}) newReportCom: NewReportComponent;
+
   constructor(
-    private message: NzMessageService
+    private message: NzMessageService,
+    private modalServe: NzModalService,
+    private accountServe: AccountService,
+    private analyticServe: AnalyticsService
   ) {
-    this.listData = new Array(3).fill({}).map((_, index) => new DataCard({
-        id: `${index}`,
-        name: `我的第 ${index} 个看板`,
-        startTime: new Date(),
-        endTime: new Date(),
-        isLoading: true,
-        items: new Array(6).fill({}).map((_i, index) => ({
-          id: `${index}`,
-          name: `Data item  ${index}`,
-          value: parseFloat((Math.random() * 100).toFixed(2)),
-          dataSource: 'sdf',
-          unit: 'EUR',
-          color: 'red',
-          calculationType: CalculationType.Count
-        }))
-      })
-    );
+
+    // this.listData = new Array(3).fill({}).map((_, index) => new DataCard({
+    //     id: `${index}`,
+    //     name: `我的第 ${index} 个看板`,
+    //     startTime: new Date(),
+    //     endTime: new Date(),
+    //     isLoading: true,
+    //     items: new Array(6).fill({}).map((_i, index) => ({
+    //       id: `${index}`,
+    //       name: `Data item  ${index}`,
+    //       value: parseFloat((Math.random() * 100).toFixed(2)),
+    //       dataSource: 'sdf',
+    //       unit: 'EUR',
+    //       color: 'red',
+    //       calculationType: CalculationType.Count
+    //     }))
+    //   })
+    // );
 
     // TODO to be removed
-    setTimeout(() => this.listData.forEach(d => d.isLoading = false), 200);
+    // setTimeout(() => this.listData.forEach(d => d.isLoading = false), 200);
   }
 
   ngOnInit(): void {
+    this.initBoardData();
+  }
+
+  // 初始化看板数据
+  private initBoardData() {
+    const { projectEnv: {envId} } = this.accountServe.getCurrentAccountProjectEnv();
+
+    this.analyticServe.getAnalyticBoardData(envId)
+      .subscribe((result: {
+        id: string;
+        envId: number;
+        dataSourceDefs: dataSource[]
+      }) => {
+        this.analyticBoardId = result.id;
+        this.envID = result.envId;
+        this.dataSourceList = result.dataSourceDefs;
+        console.log("dataSourceList：", this.dataSourceList)
+      })
   }
 
   onDateChange(data: any){
@@ -129,12 +86,17 @@ export class AnalyticsComponent implements OnInit {
   }
 
   toggleEditingCard(card: IDataCard) {
-    card.isEditing = !card.isEditing;
-    card.items = card.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null && i.dataSource !== '');
+    if(card.isEditing) {
+      console.log(this.currentDataCard)
+    } else {
+      card.isEditing = true;
+      card.items = card.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null);
+    }
   }
 
   onCreateCard() {
     const card = new DataCard();
+    this.currentDataCard = card;
     this.onAddItem(card);
     this.listData = [card, ...this.listData];
   }
@@ -167,19 +129,49 @@ export class AnalyticsComponent implements OnInit {
 
   currentDataItem: IDataItem = null;
   currentDataCard: DataCard = null;
-  onSetDataSource(card: DataCard, item: IDataItem) {
+
+  onSetDataSource(card: DataCard, item: IDataItem, index: number) {
     this.currentDataItem = Object.assign({}, item);
     this.currentDataCard = card;
     this.dataSourceModalVisible = true;
+    this.currentItemIndex = index;
   }
 
+  // 设置数据源
   onApplyDataSource () {
-    let item = this.currentDataCard.items.find(i => i.id === this.currentDataItem.id);
-    if (item) {
-      item = Object.assign({}, this.currentDataItem);
-    }
+    // let item = this.currentDataCard.items.find(i => i.id === this.currentDataItem.id);
+    // if (item) {
+    //   item = Object.assign({}, this.currentDataItem);
+    // }
 
-    this.dataSourceModalVisible = false;
+    // this.dataSourceModalVisible = false;
+    const param = this.newReportCom.setParam();
+    this.currentDataItem = {...this.currentDataItem, ...param};
+    
+    this.currentDataCard.updateItem(this.currentDataItem);
+  }
+
+  // 打开添加数据源弹窗
+  public onOpenAddDataSoureModal() {
+    this.modalServe.create({
+      nzTitle: "添加数据源",
+      nzContent: this.addDataSoureTem,
+      nzOnOk: this.onAddDataSource
+    })
+  }
+
+  // 确认添加数据源
+  private onAddDataSource = () => {
+    const dataSource: dataSource = this.newDataSourceCom.setParam();
+    const newDataSource = {
+      analyticBoardId: this.analyticBoardId,
+      envID: this.envID,
+      dataSourceDefs: [...this.dataSourceList, dataSource]
+    }
+    this.analyticServe.addDataSourece(newDataSource)
+      .subscribe(() => {
+        this.dataSourceList[this.dataSourceList.length] = dataSource;
+      })
   }
 }
 

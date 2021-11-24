@@ -17,9 +17,14 @@ import { NzStatisticModule } from 'ng-zorro-antd/statistic';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NewReportComponent } from './components/new-report/new-report.component';
+import { NewDatasourceComponent } from './components/new-datasource/new-datasource.component';
 
 @NgModule({
-  declarations: [AnalyticsComponent],
+  declarations: [AnalyticsComponent, NewReportComponent, NewDatasourceComponent],
   imports: [
     CommonModule,
     FormsModule,
@@ -36,6 +41,9 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
     NzPopconfirmModule,
     NzDatePickerModule,
     NzModalModule,
+    NzFormModule,
+    NzInputModule,
+    NzSelectModule,
     ShareModule,
     AnalyticsRoutingModule
   ]

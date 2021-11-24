@@ -1,0 +1,16 @@
+<form nz-form>
+    <nz-form-item>
+        <nz-form-label [nzSpan]="6" nzFor="data-source-name">数据源名字</nz-form-label>
+        <nz-form-control [nzSpan]="10">
+            <input [(ngModel)]="datasourceName" nz-input name="data-source-name" id="data-source-name">
+        </nz-form-control>
+    </nz-form-item>
+    <nz-form-item>
+        <nz-form-label [nzSpan]="6" nzFor="data-source-type">数据源类型</nz-form-label>
+        <nz-form-control [nzSpan]="10">
+            <nz-select [(ngModel)]="datasourceType" name="data-source-type" id="data-source-type">
+                <nz-option  nzValue="数值" nzLabel="数值"></nz-option>
+            </nz-select>
+        </nz-form-control>
+    </nz-form-item>
+</form>
