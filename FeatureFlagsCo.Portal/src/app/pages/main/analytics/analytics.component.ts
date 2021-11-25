@@ -4,9 +4,10 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { AccountService } from 'src/app/services/account.service';
 import { AnalyticsService } from 'src/app/services/analytics.service';
 import { uuidv4 } from 'src/app/utils';
+import { formatDate } from 'src/app/utils/format-date';
 import { NewDatasourceComponent } from './components/new-datasource/new-datasource.component';
 import { NewReportComponent } from './components/new-report/new-report.component';
-import { CalculationType, DataCard, dataSource, IDataCard, IDataItem } from './types/analytics';
+import { CalculationType, DataCard, dataSource, IDataCard, IDataItem, updataReportParam } from './types/analytics';
 
 @Component({
   selector: 'app-analytics',
@@ -22,8 +23,6 @@ export class AnalyticsComponent implements OnInit {
 
   private analyticBoardId: string = "";
   private envID: number = null;
-
-  private currentItemIndex: number = 0;           // 点击设置数据源时的数据索引
 
   public dataSourceList: dataSource[] = [];       // 数据源列表
 
@@ -77,6 +76,7 @@ export class AnalyticsComponent implements OnInit {
         this.analyticBoardId = result.id;
         this.envID = result.envId;
         this.dataSourceList = result.dataSourceDefs;
+        console.log(result)
         console.log("dataSourceList：", this.dataSourceList)
       })
   }
@@ -85,13 +85,39 @@ export class AnalyticsComponent implements OnInit {
     console.log('data changed');
   }
 
-  toggleEditingCard(card: IDataCard) {
+  // 切换看板状态
+  public toggleEditingCard(card: IDataCard) {
+    card.items = card.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null);
+
     if(card.isEditing) {
-      console.log(this.currentDataCard)
+      this.setSaveReportParam(card);
     } else {
       card.isEditing = true;
-      card.items = card.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null);
     }
+  }
+
+  // 设置保存报表参数
+  private setSaveReportParam(card: IDataCard) {
+    let param: updataReportParam = {
+      analyticBoardId: this.analyticBoardId,
+      envId: this.envID,
+      id: card.id,
+      name: card.name || null,
+      items: card.items,
+      startTime: card.startTime ? formatDate("YY-mm-dd", card.startTime) : null,
+      endTime: card.endTime ? formatDate("YY-mm-dd", card.endTime) : null
+    }
+    this.onSaveReportData(param, card);
+  }
+
+  // 保存报表
+  private onSaveReportData(param: updataReportParam, card: IDataCard) {
+    this.analyticServe.saveReport(param)
+      .subscribe((result) => {
+        console.log(result);
+        this.message.success("报表更新成功!");
+        card.isEditing = false;
+      })
   }
 
   onCreateCard() {
@@ -130,11 +156,11 @@ export class AnalyticsComponent implements OnInit {
   currentDataItem: IDataItem = null;
   currentDataCard: DataCard = null;
 
-  onSetDataSource(card: DataCard, item: IDataItem, index: number) {
-    this.currentDataItem = Object.assign({}, item);
+  // 点击设置数据源（打开设置数据源弹窗）
+  public onSetDataSource(card: DataCard, item: IDataItem) {
+    this.currentDataItem = {...item};
     this.currentDataCard = card;
     this.dataSourceModalVisible = true;
-    this.currentItemIndex = index;
   }
 
   // 设置数据源
@@ -143,12 +169,10 @@ export class AnalyticsComponent implements OnInit {
     // if (item) {
     //   item = Object.assign({}, this.currentDataItem);
     // }
-
-    // this.dataSourceModalVisible = false;
-    const param = this.newReportCom.setParam();
-    this.currentDataItem = {...this.currentDataItem, ...param};
-    
+    console.log(this.currentDataItem);
+    this.currentDataItem = {...this.currentDataItem, ...this.newReportCom.setParam()};
     this.currentDataCard.updateItem(this.currentDataItem);
+    this.dataSourceModalVisible = false;
   }
 
   // 打开添加数据源弹窗

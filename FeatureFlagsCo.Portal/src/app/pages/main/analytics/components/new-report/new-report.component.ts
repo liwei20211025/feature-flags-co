@@ -1,5 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { dataSource } from '../../types/analytics';
+import { dataSource, IDataItem } from '../../types/analytics';
 import { countMode } from '../../types/static';
 
 @Component({
@@ -10,6 +10,13 @@ import { countMode } from '../../types/static';
 export class NewReportComponent implements OnInit {
 
   @Input() dataSourceList: dataSource[] = [];
+  @Input()
+  set currentDataSource(value: IDataItem) {
+    this.dataSource = value.dataSource || null;
+    this.unit = value.unit || "";
+    this.calculationType = value.calculationType || countMode[0].id;
+    this.color = value.color || "#000000";
+  }
 
   public countMode = countMode;               // 计数方式
   public dataSource: dataSource;              // 数据源

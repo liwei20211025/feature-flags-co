@@ -63,14 +63,14 @@ export class DataCard {
 
     disabledStartDate = (startTime: Date): boolean => {
         if (!startTime || !this.endTime) {
-        return false;
+            return false;
         }
         return startTime.getTime() > this.endTime.getTime();
     }
 
     disabledEndDate = (endTime: Date): boolean => {
         if (!endTime || !this.startTime) {
-        return false;
+            return false;
         }
         return endTime.getTime() <= this.startTime.getTime();
     }
@@ -102,4 +102,15 @@ export interface dataSource {
     id: string;
     name: string;
     dataType: string;
+}
+
+// 更新看板数据参数
+export interface updataReportParam {
+    analyticBoardId: string;
+    envId: number;
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    items: IDataItem[]
 }
