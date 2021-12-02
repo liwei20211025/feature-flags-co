@@ -271,7 +271,8 @@ export class AnalyticsComponent implements OnInit {
     } else {
       // 显示使用当前数据源的报表
       this.reportsForCurrDataSource.forEach(report => {
-        this.message.warning(`当前数据源正在被报表 “${report.name}” 的 “${report.itemName}” 项目使用！`)
+        this.message.warning(`当前数据源正在被报表 “${report.name}” 的 “${report.itemName}” 项目使用！`);
+        console.log("测试 git");
       })
     }
   }
