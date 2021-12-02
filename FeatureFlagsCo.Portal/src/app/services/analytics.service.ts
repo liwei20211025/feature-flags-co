@@ -32,4 +32,22 @@ export class AnalyticsService {
     const url = `${this.baseUrl}/data-group`;
     return this.http.post(url, param);
   }
+
+  // 删除报表
+  public deleteReport(envId: number, boardId: string, groupId: string): Observable<any> {
+    const url = `${this.baseUrl}/data-group`;
+    const params = {
+      envId, boardId, groupId
+    }
+    return this.http.delete(url, { params });
+  }
+
+  // 删除数据源
+  public deleteDateSource(envId: number, boardId: string, dataSourceId: string): Observable<any> {
+    const url = `${this.baseUrl}/data-source`;
+    const params = {
+      envId, boardId, dataSourceId
+    }
+    return this.http.delete(url, { params });
+  }
 }
