@@ -230,7 +230,7 @@ export class AnalyticsComponent implements OnInit {
   }
 
   // 打开添加数据源弹窗
-  public onOpenAddDataSoureModal() {
+  public onOpenDataSoureModal() {
     this.dataSourcesManageModalVisible = true;
   }
 
