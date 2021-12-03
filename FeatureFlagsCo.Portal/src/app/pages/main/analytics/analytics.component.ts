@@ -29,8 +29,12 @@ export class AnalyticsComponent implements OnInit {
   public dataSourceBoardType: 'table' | 'form' = 'table';   // 添加数据源弹窗界面类型
   public dataSourceOperatorType: 'new' | 'edit' = 'new';    // 如何操作数据源
   public currentDataSource: dataSource;                     // 当前数据源
+  public currentDataItem: IDataItem = null;
+  public currentDataCard: DataCard = null;
 
   public reportsForCurrDataSource: any[] = [];              // 当前将要被删除的数据源，被使用的报表列表
+  public willSaveCard: IDataCard;                           // 将要保存的报表
+  public isSureSave: boolean = false;                       // 如果有没有 name 值的 item，提示是否确认保存
 
   @ViewChild("addDataSourceTem", {static: false}) addDataSoureTem: TemplateRef<any>;
   @ViewChild("dataSources", {static: false}) dataSourceCom: DataSourcesComponent;
@@ -40,29 +44,7 @@ export class AnalyticsComponent implements OnInit {
     private message: NzMessageService,
     private accountServe: AccountService,
     private analyticServe: AnalyticsService
-  ) {
-
-    // this.listData = new Array(3).fill({}).map((_, index) => new DataCard({
-    //     id: `${index}`,
-    //     name: `我的第 ${index} 个看板`,
-    //     startTime: new Date(),
-    //     endTime: new Date(),
-    //     isLoading: true,
-    //     items: new Array(6).fill({}).map((_i, index) => ({
-    //       id: `${index}`,
-    //       name: `Data item  ${index}`,
-    //       value: parseFloat((Math.random() * 100).toFixed(2)),
-    //       dataSource: 'sdf',
-    //       unit: 'EUR',
-    //       color: 'red',
-    //       calculationType: CalculationType.Count
-    //     }))
-    //   })
-    // );
-
-    // TODO to be removed
-    // setTimeout(() => this.listData.forEach(d => d.isLoading = false), 200);
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initBoardData();
@@ -95,22 +77,45 @@ export class AnalyticsComponent implements OnInit {
 
   // 设置每个 item 的 value 值
   private requestValueForItems() {
+    this.listData.forEach((data: DataCard) => {
+      
+      let items = data.items;
+      let len = items.length;
 
-  }
-
-  onDateChange(data: any){
-    console.log('data changed');
+      if(len) {
+        items.forEach((item: IDataItem) => {
+          item.isLoading = true;
+          item.value = 111;
+          setTimeout(() => {
+            item.isLoading = false;
+          }, 1000)
+        })
+      }
+    })
   }
 
   // 切换看板状态
   public toggleEditingCard(card: IDataCard) {
-    card.items = card.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null);
-
     if(card.isEditing) {
-      this.setSaveReportParam(card);
+
+      // 筛选是否有没有 name 值和 DataSource 的 选项
+      const result = card.items.filter(item => !item.name || !item.dataSource);
+      
+      if(result.length) {
+        this.willSaveCard = card;
+        this.isSureSave = true;
+      } else {
+        this.setSaveReportParam(card);
+      }
     } else {
       card.isEditing = true;
     }
+  }
+
+  // 确认保存
+  public onSureToSave() {
+    this.willSaveCard.items = this.willSaveCard.items.filter(i => i.name !== null && i.name !== '' && i.dataSource !== null);
+    this.setSaveReportParam(this.willSaveCard);
   }
 
   // 设置保存报表参数
@@ -130,21 +135,23 @@ export class AnalyticsComponent implements OnInit {
   // 保存报表
   private onSaveReportData(param: updataReportParam, card: IDataCard) {
     this.analyticServe.saveReport(param)
-      .subscribe((result) => {
-        console.log(result);
+      .subscribe(() => {
         this.message.success("报表更新成功!");
         card.isEditing = false;
+        card.itemsCount = card.items.length;
       })
   }
 
-  onCreateCard() {
+  // 创建报表
+  public onCreateCard() {
     const card = new DataCard();
     this.currentDataCard = card;
     this.onAddItem(card);
     this.listData = [card, ...this.listData];
   }
 
-  onAddItem(data: DataCard) {
+  // 添加 item
+  public onAddItem(data: DataCard) {
     data.items = [...data.items, {
         id: uuidv4(),
         name: null,
@@ -156,7 +163,6 @@ export class AnalyticsComponent implements OnInit {
     }]
 
     data.itemsCount = data.itemsCount + 1;
-    console.log(data)
   }
 
   // 删除报表
@@ -169,7 +175,8 @@ export class AnalyticsComponent implements OnInit {
       })
   }
 
-  removeDataItem(card: DataCard, item: IDataItem) {
+  // 删除 item
+  public removeDataItem(card: DataCard, item: IDataItem) {
     const idx = card.items.findIndex(i => i.id === item.id);
     if (idx > -1) {
       card.items.splice(idx, 1);
@@ -177,13 +184,11 @@ export class AnalyticsComponent implements OnInit {
     }
   }
 
-  currentDataItem: IDataItem = null;
-  currentDataCard: DataCard = null;
-
   // 点击设置数据源（打开设置数据源弹窗）
   public onSetDataSource(card: DataCard, item: IDataItem) {
     this.currentDataItem = {...item};
     this.currentDataCard = card;
+    console.log(this.currentDataCard)
     this.dataSourceModalVisible = true;
   }
 
@@ -214,11 +219,6 @@ export class AnalyticsComponent implements OnInit {
 
   // 设置数据源
   public onApplyDataSource () {
-    // let item = this.currentDataCard.items.find(i => i.id === this.currentDataItem.id);
-    // if (item) {
-    //   item = Object.assign({}, this.currentDataItem);
-    // }
-    console.log(this.currentDataItem);
     this.currentDataItem = {...this.currentDataItem, ...this.newReportCom.setParam()};
     this.currentDataCard.updateItem(this.currentDataItem);
     this.dataSourceModalVisible = false;
@@ -272,7 +272,6 @@ export class AnalyticsComponent implements OnInit {
       // 显示使用当前数据源的报表
       this.reportsForCurrDataSource.forEach(report => {
         this.message.warning(`当前数据源正在被报表 “${report.name}” 的 “${report.itemName}” 项目使用！`);
-        console.log("测试 git");
       })
     }
   }
