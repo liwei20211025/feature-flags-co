@@ -62,6 +62,7 @@ export class NewReportComponent {
 
   // 数据源发生改变，更新不可选择的计数方式列表
   public onSelectDataSource() {
+    console.log(this.dataSource)
     this.initNoSelectableLists();
   }
 

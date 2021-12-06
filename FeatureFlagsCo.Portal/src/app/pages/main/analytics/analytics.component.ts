@@ -7,6 +7,7 @@ import { NewReportComponent } from './components/new-report/new-report.component
 import { CalculationType, DataCard, dataSource, IDataCard, IDataItem, updataReportParam } from './types/analytics';
 import * as moment from 'moment';
 import { DataSourcesComponent } from './components/data-sources/data-sources.component';
+import { dataGrouping, sameTimeGroup } from './types/data-grouping';
 
 @Component({
   selector: 'app-analytics',
@@ -64,10 +65,10 @@ export class AnalyticsComponent implements OnInit {
         this.analyticBoardId = result.id;
         this.envID = result.envId;
         this.dataSourceList = result.dataSourceDefs;
-        console.log(result)
 
         let groups = result.dataGroups;
         groups.forEach((group: DataCard) => {
+          group.items.length && group.items.map((item: IDataItem) => item.isLoading = true);
           this.listData[this.listData.length] = new DataCard({...group, isLoading: false, isEditing: false, itemsCount: group.items.length});
         })
 
@@ -77,19 +78,26 @@ export class AnalyticsComponent implements OnInit {
 
   // 设置每个 item 的 value 值
   private requestValueForItems() {
-    this.listData.forEach((data: DataCard) => {
-      
-      let items = data.items;
-      let len = items.length;
+    dataGrouping(this.listData, this.envID).forEach((item: sameTimeGroup) => {
+      this.analyticServe.computeResult(item).subscribe(result =>  this.setItemValue(result.items));
+    })
+  }
 
-      if(len) {
-        items.forEach((item: IDataItem) => {
-          item.isLoading = true;
-          item.value = 111;
-          setTimeout(() => {
-            item.isLoading = false;
-          }, 1000)
-        })
+  // 设置 item 的 value 值
+  private setItemValue(result: {id: string, value: number}[]) {
+    result.forEach((item: {id: string, value: number}) => {
+      next: for(let i = 0; i < this.listData.length; i++) {
+        const items = this.listData[i].items;
+
+        if(items.length) {
+          for(let j = 0; j < items.length; j++) {
+            if(items[j].id === item.id) {
+              items[j].isLoading = false;
+              items[j].value = item.value;
+              break next;
+            }
+          }
+        }
       }
     })
   }
@@ -188,7 +196,6 @@ export class AnalyticsComponent implements OnInit {
   public onSetDataSource(card: DataCard, item: IDataItem) {
     this.currentDataItem = {...item};
     this.currentDataCard = card;
-    console.log(this.currentDataCard)
     this.dataSourceModalVisible = true;
   }
 

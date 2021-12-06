@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { updataReportParam } from '../pages/main/analytics/types/analytics';
+import { sameTimeGroup } from '../pages/main/analytics/types/data-grouping';
 
 @Injectable({
   providedIn: "root"
@@ -49,5 +50,11 @@ export class AnalyticsService {
       envId, boardId, dataSourceId
     }
     return this.http.delete(url, { params });
+  }
+
+  // 计算结果
+  public computeResult(param: sameTimeGroup): Observable<any> {
+    const url = `${this.baseUrl}/results`;
+    return this.http.post(url, param);
   }
 }
