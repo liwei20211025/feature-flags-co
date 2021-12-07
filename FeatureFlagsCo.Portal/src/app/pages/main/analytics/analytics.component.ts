@@ -143,7 +143,7 @@ export class AnalyticsComponent implements OnInit {
 
   // 保存报表
   private onSaveReportData(param: updataReportParam, card: IDataCard) {
-    
+
     this.analyticServe.saveReport(param)
       .subscribe(() => {
         this.message.success("报表更新成功!");
