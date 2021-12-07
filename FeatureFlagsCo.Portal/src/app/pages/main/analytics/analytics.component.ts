@@ -62,6 +62,7 @@ export class AnalyticsComponent implements OnInit {
         dataSourceDefs: dataSource[],
         dataGroups: DataCard[]
       }) => {
+        this.listData = [];
         this.analyticBoardId = result.id;
         this.envID = result.envId;
         this.dataSourceList = result.dataSourceDefs;
@@ -142,11 +143,37 @@ export class AnalyticsComponent implements OnInit {
 
   // 保存报表
   private onSaveReportData(param: updataReportParam, card: IDataCard) {
+    
     this.analyticServe.saveReport(param)
       .subscribe(() => {
         this.message.success("报表更新成功!");
         card.isEditing = false;
         card.itemsCount = card.items.length;
+
+        card.items.forEach((item: IDataItem) => {
+
+          item.isLoading = true;
+
+          const param: sameTimeGroup = {
+            envId: this.envID,
+            startTime: moment(card.startTime).format("YYYY-MM-DD"),
+            endTime: moment(card.endTime).format("YYYY-MM-DD"),
+            calculationType: item.calculationType,
+            items: [
+              {
+                id: item.id,
+                name: item.name,
+                dataType: item.dataSource.dataType
+              }
+            ]
+          }
+    
+          this.analyticServe.computeResult(param)
+            .subscribe(result =>  {
+              item.isLoading = false;
+              item.value = result.items[0].value;
+            });
+        })
       })
   }
 
@@ -233,7 +260,7 @@ export class AnalyticsComponent implements OnInit {
 
   // 刷新页面
   public onRefreshPage() {
-
+    this.initBoardData();
   }
 
   // 打开添加数据源弹窗
