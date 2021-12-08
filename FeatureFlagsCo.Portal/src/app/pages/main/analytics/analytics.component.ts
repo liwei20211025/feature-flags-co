@@ -63,6 +63,7 @@ export class AnalyticsComponent implements OnInit {
         dataGroups: DataCard[]
       }) => {
         this.listData = [];
+        
         this.analyticBoardId = result.id;
         this.envID = result.envId;
         this.dataSourceList = result.dataSourceDefs;
